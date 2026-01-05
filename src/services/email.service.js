@@ -31,11 +31,33 @@ const sendEmail = async (to, subject, text) => {
  */
 const sendResetPasswordEmail = async (to, token) => {
   const subject = 'Reset password';
-  // replace this url with the link to the reset password page of your front-end app
-  const resetPasswordUrl = `http://link-to-app/reset-password?token=${token}`;
+  const resetPasswordUrl = `${process.env.FRONTEND_URL}/reset/password?token=${token}`;
   const text = `Dear user,
   To reset your password, click on this link: ${resetPasswordUrl}
   If you did not request any password resets, then ignore this email.`;
+  await sendEmail(to, subject, text);
+};
+
+const sendVerificationEmail = async (to, otp) => {
+  const subject = 'Your verification code';
+  const text = `Dear User,
+  Your One-Time Password (OTP) for verification is:
+  ${otp}
+  This OTP is valid for 15 minutes.
+  Please do not share this code with anyone.
+  If you did not request this verification, you can safely ignore this email.
+  Thanks,
+  Team Kushagro`;
+
+  await sendEmail(to, subject, text);
+};
+
+const sendForgotPasswordEmail = async (to, otp) => {
+  const subject = 'Reset Password OTP';
+  const text = `Dear User,
+  Your OTP for password reset is: ${otp}
+  This OTP is valid for 15 minutes.
+  If you did not request this, please ignore this email.`;
   await sendEmail(to, subject, text);
 };
 
@@ -43,4 +65,6 @@ module.exports = {
   transport,
   sendEmail,
   sendResetPasswordEmail,
+  sendVerificationEmail,
+  sendForgotPasswordEmail,
 };

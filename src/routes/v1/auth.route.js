@@ -6,11 +6,13 @@ const authController = require('../../controllers/auth.controller');
 const router = express.Router();
 
 router.post('/register', validate(authValidation.register), authController.register);
+router.post('/verify/otp', validate(authValidation.verifyOtp), authController.verifyOtp);
 router.post('/login', validate(authValidation.login), authController.login);
 router.post('/logout', validate(authValidation.logout), authController.logout);
 router.post('/refresh-tokens', validate(authValidation.refreshTokens), authController.refreshTokens);
-router.post('/forgot-password', validate(authValidation.forgotPassword), authController.forgotPassword);
-router.post('/reset-password', validate(authValidation.resetPassword), authController.resetPassword);
+router.post('/forgot/password', validate(authValidation.forgotPassword), authController.forgotPassword);
+router.post('/reset/password', validate(authValidation.resetPassword), authController.resetPassword);
+router.patch('/save/info', validate(authValidation.saveUserInfo), authController.saveUserInfo);
 
 module.exports = router;
 
@@ -38,6 +40,8 @@ module.exports = router;
  *                - name
  *                - email
  *                - password
+ *                - phone
+ *                - primaryKey
  *              properties:
  *                name:
  *                  type: string
@@ -50,10 +54,121 @@ module.exports = router;
  *                  format: password
  *                  minLength: 8
  *                  description: At least one number and one letter
+ *                phone:
+ *                  type: string
+ *                  format: phone
+ *                  description: must be unique
+ *                primaryKey:
+ *                  type: string
+ *                  format: primaryKey
+ *                  description: must be email or phone
  *              example:
  *                name: fake name
  *                email: fake@example.com
  *                password: password1
+ *                phone: "9876543211"
+ *                primaryKey: "email"
+ *      responses:
+ *        "201":
+ *          description: Created
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  user:
+ *                    $ref: '#/components/schemas/User'
+ *                  tokens:
+ *                    $ref: '#/components/schemas/AuthTokens'
+ *        "400":
+ *          $ref: '#/components/responses/DuplicateEmail'
+ */
+
+/**
+ * @swagger
+ * path:
+ *  /auth/verify/otp:
+ *    post:
+ *      summary: Verify OTP
+ *      tags: [Auth]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              required:
+ *                - email
+ *                - phone
+ *                - otp
+ *              properties:
+ *                email:
+ *                  type: string
+ *                  format: email
+ *                  description: must be unique
+ *                otp:
+ *                  type: string
+ *                  format: phone
+ *                  description: must be unique
+ *              example:
+ *                email: fake@example.com
+ *                otp: "123456"
+ *      responses:
+ *        "201":
+ *          description: Created
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  user:
+ *                    $ref: '#/components/schemas/User'
+ *                  tokens:
+ *                    $ref: '#/components/schemas/AuthTokens'
+ *        "400":
+ *          $ref: '#/components/responses/DuplicateEmail'
+ */
+
+/**
+ * @swagger
+ * path:
+ *  /auth/save/info:
+ *    patch:
+ *      summary: Save user info
+ *      tags: [Auth]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              required:
+ *                - email
+ *                - phone
+ *                - role
+ *                - governmentId
+ *              properties:
+ *                email:
+ *                  type: string
+ *                  format: email
+ *                  description: must be unique
+ *                phone:
+ *                  type: string
+ *                  format: phone
+ *                  description: must be unique
+ *                role:
+ *                  type: string
+ *                  format: role
+ *                  description: must be unique
+ *                governmentId:
+ *                  type: string
+ *                  format: governmentId
+ *                  description: must be unique
+ *              example:
+ *                email: fake@example.com
+ *                phone: "9876543211"
+ *                role: "user"
+ *                governmentId: "1234567890"
  *      responses:
  *        "201":
  *          description: Created
@@ -180,7 +295,7 @@ module.exports = router;
 /**
  * @swagger
  * path:
- *  /auth/forgot-password:
+ *  /auth/forgot/password:
  *    post:
  *      summary: Forgot password
  *      description: An email will be sent to reset password.
@@ -209,7 +324,7 @@ module.exports = router;
 /**
  * @swagger
  * path:
- *  /auth/reset-password:
+ *  /auth/reset/password:
  *    post:
  *      summary: Reset password
  *      tags: [Auth]

@@ -10,13 +10,17 @@ const envVarsSchema = Joi.object()
     PORT: Joi.number().default(3000),
     MONGODB_URL: Joi.string().required().description('Mongo DB url'),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
-    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(30).description('minutes after which access tokens expire'),
+    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(300).description('minutes after which access tokens expire'),
     JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(30).description('days after which refresh tokens expire'),
     SMTP_HOST: Joi.string().description('server that will send the emails'),
     SMTP_PORT: Joi.number().description('port to connect to the email server'),
     SMTP_USERNAME: Joi.string().description('username for email server'),
     SMTP_PASSWORD: Joi.string().description('password for email server'),
     EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
+    AWS_SECRET_ACCESS_KEY: Joi.string().description('aws s3 secret access key'),
+    AWS_ACCESS_KEY_ID: Joi.string().required().description('aws s3 access key id'),
+    AWS_BUCKET_REGION: Joi.string().required().description('aws s3 region'),
+    AWS_BUCKET_NAME: Joi.string().required().description('aws s3 bucket name'),
   })
   .unknown();
 
@@ -53,5 +57,13 @@ module.exports = {
       },
     },
     from: envVars.EMAIL_FROM,
+  },
+  aws: {
+    s3: {
+      secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY,
+      accessKeyId: envVars.AWS_ACCESS_KEY_ID,
+      region: envVars.AWS_BUCKET_REGION,
+      bucket: envVars.AWS_BUCKET_NAME,
+    },
   },
 };
