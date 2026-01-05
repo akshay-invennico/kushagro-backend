@@ -227,7 +227,7 @@ describe('Auth routes', () => {
     });
   });
 
-  describe('POST /v1/auth/forgot-password', () => {
+  describe('POST /v1/auth/forgot/password', () => {
     beforeEach(() => {
       jest.spyOn(emailService.transport, 'sendMail').mockResolvedValue();
     });
@@ -236,7 +236,7 @@ describe('Auth routes', () => {
       await insertUsers([userOne]);
       const sendResetPasswordEmailSpy = jest.spyOn(emailService, 'sendResetPasswordEmail');
 
-      await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NO_CONTENT);
+      await request(app).post('/v1/auth/forgot/password').send({ email: userOne.email }).expect(httpStatus.NO_CONTENT);
 
       expect(sendResetPasswordEmailSpy).toHaveBeenCalledWith(userOne.email, expect.any(String));
       const resetPasswordToken = sendResetPasswordEmailSpy.mock.calls[0][1];
@@ -247,15 +247,15 @@ describe('Auth routes', () => {
     test('should return 400 if email is missing', async () => {
       await insertUsers([userOne]);
 
-      await request(app).post('/v1/auth/forgot-password').send().expect(httpStatus.BAD_REQUEST);
+      await request(app).post('/v1/auth/forgot/password').send().expect(httpStatus.BAD_REQUEST);
     });
 
     test('should return 404 if email does not belong to any user', async () => {
-      await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NOT_FOUND);
+      await request(app).post('/v1/auth/forgot/password').send({ email: userOne.email }).expect(httpStatus.NOT_FOUND);
     });
   });
 
-  describe('POST /v1/auth/reset-password', () => {
+  describe('POST /v1/auth/reset/password', () => {
     test('should return 204 and reset the password', async () => {
       await insertUsers([userOne]);
       const expires = moment().add(config.jwt.resetPasswordExpirationMinutes, 'minutes');
@@ -263,7 +263,7 @@ describe('Auth routes', () => {
       await tokenService.saveToken(resetPasswordToken, userOne._id, expires, tokenTypes.RESET_PASSWORD);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: 'password2' })
         .expect(httpStatus.NO_CONTENT);
@@ -279,7 +279,7 @@ describe('Auth routes', () => {
     test('should return 400 if reset password token is missing', async () => {
       await insertUsers([userOne]);
 
-      await request(app).post('/v1/auth/reset-password').send({ password: 'password2' }).expect(httpStatus.BAD_REQUEST);
+      await request(app).post('/v1/auth/reset/password').send({ password: 'password2' }).expect(httpStatus.BAD_REQUEST);
     });
 
     test('should return 401 if reset password token is blacklisted', async () => {
@@ -289,7 +289,7 @@ describe('Auth routes', () => {
       await tokenService.saveToken(resetPasswordToken, userOne._id, expires, tokenTypes.RESET_PASSWORD, true);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: 'password2' })
         .expect(httpStatus.UNAUTHORIZED);
@@ -302,7 +302,7 @@ describe('Auth routes', () => {
       await tokenService.saveToken(resetPasswordToken, userOne._id, expires, tokenTypes.RESET_PASSWORD);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: 'password2' })
         .expect(httpStatus.UNAUTHORIZED);
@@ -314,7 +314,7 @@ describe('Auth routes', () => {
       await tokenService.saveToken(resetPasswordToken, userOne._id, expires, tokenTypes.RESET_PASSWORD);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: 'password2' })
         .expect(httpStatus.UNAUTHORIZED);
@@ -326,22 +326,22 @@ describe('Auth routes', () => {
       const resetPasswordToken = tokenService.generateToken(userOne._id, expires, tokenTypes.RESET_PASSWORD);
       await tokenService.saveToken(resetPasswordToken, userOne._id, expires, tokenTypes.RESET_PASSWORD);
 
-      await request(app).post('/v1/auth/reset-password').query({ token: resetPasswordToken }).expect(httpStatus.BAD_REQUEST);
+      await request(app).post('/v1/auth/reset/password').query({ token: resetPasswordToken }).expect(httpStatus.BAD_REQUEST);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: 'short1' })
         .expect(httpStatus.BAD_REQUEST);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: 'password' })
         .expect(httpStatus.BAD_REQUEST);
 
       await request(app)
-        .post('/v1/auth/reset-password')
+        .post('/v1/auth/reset/password')
         .query({ token: resetPasswordToken })
         .send({ password: '11111111' })
         .expect(httpStatus.BAD_REQUEST);

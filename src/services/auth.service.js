@@ -4,6 +4,9 @@ const userService = require('./user.service');
 const Token = require('../models/token.model');
 const ApiError = require('../utils/ApiError');
 const { tokenTypes } = require('../config/tokens');
+const { generateOtp } = require('../utils/generateOtp');
+const emailService = require('./email.service');
+const smsService = require('./sms.service');
 
 /**
  * Login with username and password
@@ -52,23 +55,104 @@ const refreshAuth = async (refreshToken) => {
 };
 
 /**
+ * Forgot password
+ * @param {string} email
+ * @param {string} phone
+ * @returns {Promise}
+ */
+const forgotPassword = async (email, phone) => {
+  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const otp = generateOtp();
+  user.otp = otp;
+  user.otpExpiresAt = Date.now() + 15 * 60 * 1000;
+  await user.save();
+
+  if (email) {
+    await emailService.sendForgotPasswordEmail(email, otp);
+  } else {
+    const fullPhone = user.dialingCode + user.phone;
+    await smsService.sendResetPasswordSms(fullPhone, otp);
+  }
+};
+
+/**
  * Reset password
- * @param {string} resetPasswordToken
+ * @param {string} email
+ * @param {string} phone
+ * @param {string} otp
  * @param {string} newPassword
  * @returns {Promise}
  */
-const resetPassword = async (resetPasswordToken, newPassword) => {
-  try {
-    const resetPasswordTokenDoc = await tokenService.verifyToken(resetPasswordToken, tokenTypes.RESET_PASSWORD);
-    const user = await userService.getUserById(resetPasswordTokenDoc.user);
-    if (!user) {
-      throw new Error();
-    }
-    await Token.deleteMany({ user: user.id, type: tokenTypes.RESET_PASSWORD });
-    await userService.updateUserById(user.id, { password: newPassword });
-  } catch (error) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Password reset failed');
+const resetPassword = async (email, phone, otp, newPassword) => {
+  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
+
+  if (!user.otp || !user.otpExpiresAt || user.otpExpiresAt < Date.now()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP expired or invalid');
+  }
+
+  if (user.otp !== parseInt(otp, 10)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP');
+  }
+
+  await userService.updateUserById(user.id, { password: newPassword });
+
+  user.otp = null;
+  user.otpExpiresAt = null;
+  await user.save();
+};
+
+const verifyOtp = async (body) => {
+  const { email, phone, otp } = body;
+
+  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (user.isVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User already verified');
+  }
+
+  if (!user.otp || !user.otpExpiresAt) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP not found or already used');
+  }
+
+  if (user.otpExpiresAt < Date.now()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP has expired');
+  }
+
+  if (user.otp !== otp) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP');
+  }
+
+  user.isVerified = true;
+  user.otp = null;
+  user.otpExpiresAt = null;
+
+  await user.save();
+  return user;
+};
+
+const saveUserInfo = async (body) => {
+  const { email, phone, role, governmentId } = body;
+  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  await userService.updateUserById(user.id, { role, governmentId, isAccountVerified: true });
+  return user;
 };
 
 module.exports = {
@@ -76,4 +160,7 @@ module.exports = {
   logout,
   refreshAuth,
   resetPassword,
+  verifyOtp,
+  forgotPassword,
+  saveUserInfo,
 };

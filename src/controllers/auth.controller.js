@@ -1,11 +1,31 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
-const { authService, userService, tokenService, emailService } = require('../services');
+const { authService, userService, tokenService, emailService, smsService } = require('../services');
+const { generateOtp } = require('../utils/generateOtp');
 
 const register = catchAsync(async (req, res) => {
   const user = await userService.createUser(req.body);
-  const tokens = await tokenService.generateAuthTokens(user);
-  res.status(httpStatus.CREATED).send({ user, tokens });
+  const otp = generateOtp();
+  user.otp = otp;
+  user.otpExpiresAt = Date.now() + 15 * 60 * 1000;
+  await user.save();
+
+  if (req.body.phone) {
+    const phone = user.dialingCode + user.phone;
+    await smsService.sendOtpSms(phone, otp);
+  } else {
+    await emailService.sendVerificationEmail(user.email, otp);
+  }
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+const verifyOtp = catchAsync(async (req, res) => {
+  const user = await authService.verifyOtp(req.body);
+
+  res.status(httpStatus.OK).send({
+    message: 'OTP verified successfully',
+    user,
+  });
 });
 
 const login = catchAsync(async (req, res) => {
@@ -26,14 +46,21 @@ const refreshTokens = catchAsync(async (req, res) => {
 });
 
 const forgotPassword = catchAsync(async (req, res) => {
-  const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
-  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
+  const { email, phone } = req.body;
+  await authService.forgotPassword(email, phone);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
 const resetPassword = catchAsync(async (req, res) => {
-  await authService.resetPassword(req.query.token, req.body.password);
+  const { email, phone, otp, password } = req.body;
+  await authService.resetPassword(email, phone, otp, password);
   res.status(httpStatus.NO_CONTENT).send();
+});
+
+const saveUserInfo = catchAsync(async (req, res) => {
+  const user = await authService.saveUserInfo(req.body);
+  const tokens = await tokenService.generateAuthTokens(user);
+  res.status(httpStatus.OK).send({ message: 'User info saved successfully', user, tokens });
 });
 
 module.exports = {
@@ -43,4 +70,6 @@ module.exports = {
   refreshTokens,
   forgotPassword,
   resetPassword,
+  verifyOtp,
+  saveUserInfo,
 };
