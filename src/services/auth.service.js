@@ -22,6 +22,14 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   return user;
 };
 
+const loginUserWithPhoneAndPassword = async (phone, password) => {
+  const user = await userService.getUserByPhone(phone);
+  if (!user || !(await user.isPasswordMatch(password))) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect phone or password');
+  }
+  return user;
+};
+
 /**
  * Logout
  * @param {string} refreshToken
@@ -131,7 +139,7 @@ const verifyOtp = async (body) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'OTP has expired');
   }
 
-  if (user.otp !== otp) {
+  if (Number(user.otp) !== Number(otp)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP');
   }
 
@@ -143,16 +151,29 @@ const verifyOtp = async (body) => {
   return user;
 };
 
-const saveUserInfo = async (body) => {
-  const { email, phone, role, governmentId } = body;
-  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+const completeRegistration = async (userId, body) => {
+  const { role, governmentId } = body;
+
+  const user = await userService.getUserById(userId);
 
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  await userService.updateUserById(user.id, { role, governmentId, isAccountVerified: true });
-  return user;
+  if (!user.isVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your email/phone first');
+  }
+
+  if (user.isAccountVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Registration already completed');
+  }
+
+  if (!role || !governmentId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Role and government ID are required');
+  }
+
+  const updatedUser = await userService.updateUserById(user.id, { role, governmentId, isAccountVerified: true });
+  return updatedUser;
 };
 
 module.exports = {
@@ -162,5 +183,6 @@ module.exports = {
   resetPassword,
   verifyOtp,
   forgotPassword,
-  saveUserInfo,
+  completeRegistration,
+  loginUserWithPhoneAndPassword,
 };

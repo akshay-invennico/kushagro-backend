@@ -85,6 +85,33 @@ const generateAuthTokens = async (user) => {
 };
 
 /**
+ * Generate temporary auth tokens (for users who verified OTP but haven't completed registration)
+ * @param {User} user
+ * @returns {Promise<Object>}
+ */
+const generateTemporaryAuthTokens = async (user) => {
+  // Temporary access token with shorter expiration (1 hour)
+  const accessTokenExpires = moment().add(60, 'minutes');
+  const accessToken = generateToken(user.id, accessTokenExpires, tokenTypes.TEMPORARY_ACCESS);
+
+  // Temporary refresh token with 24 hours expiration
+  const refreshTokenExpires = moment().add(1, 'days');
+  const refreshToken = generateToken(user.id, refreshTokenExpires, tokenTypes.REFRESH);
+  await saveToken(refreshToken, user.id, refreshTokenExpires, tokenTypes.REFRESH);
+
+  return {
+    access: {
+      token: accessToken,
+      expires: accessTokenExpires.toDate(),
+    },
+    refresh: {
+      token: refreshToken,
+      expires: refreshTokenExpires.toDate(),
+    },
+  };
+};
+
+/**
  * Generate reset password token
  * @param {string} email
  * @returns {Promise<string>}
@@ -105,5 +132,6 @@ module.exports = {
   saveToken,
   verifyToken,
   generateAuthTokens,
+  generateTemporaryAuthTokens,
   generateResetPasswordToken,
 };

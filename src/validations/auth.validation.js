@@ -68,7 +68,7 @@ const resetPassword = {
     .or('email', 'phone'),
 };
 
-const saveUserInfo = {
+const completeRegistration = {
   body: Joi.object()
     .keys({
       email: Joi.string().email(),
@@ -87,5 +87,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   verifyOtp,
-  saveUserInfo,
+  completeRegistration,
 };

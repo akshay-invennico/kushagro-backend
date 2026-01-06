@@ -21,18 +21,27 @@ const register = catchAsync(async (req, res) => {
 
 const verifyOtp = catchAsync(async (req, res) => {
   const user = await authService.verifyOtp(req.body);
+  const tokens = await tokenService.generateTemporaryAuthTokens(user);
 
   res.status(httpStatus.OK).send({
-    message: 'OTP verified successfully',
+    message: 'OTP verified successfully. Please complete your registration.',
     user,
+    tokens,
   });
 });
 
 const login = catchAsync(async (req, res) => {
-  const { email, password } = req.body;
-  const user = await authService.loginUserWithEmailAndPassword(email, password);
-  const tokens = await tokenService.generateAuthTokens(user);
-  res.send({ user, tokens });
+  const { email, phone, password } = req.body;
+
+  if (email) {
+    const user = await authService.loginUserWithEmailAndPassword(email, password);
+    const tokens = await tokenService.generateAuthTokens(user);
+    res.send({ user, tokens });
+  } else if (phone) {
+    const user = await authService.loginUserWithPhoneAndPassword(phone, password);
+    const tokens = await tokenService.generateAuthTokens(user);
+    res.send({ user, tokens });
+  }
 });
 
 const logout = catchAsync(async (req, res) => {
@@ -57,10 +66,10 @@ const resetPassword = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
-const saveUserInfo = catchAsync(async (req, res) => {
-  const user = await authService.saveUserInfo(req.body);
+const completeRegistration = catchAsync(async (req, res) => {
+  const user = await authService.completeRegistration(req.user.id, req.body);
   const tokens = await tokenService.generateAuthTokens(user);
-  res.status(httpStatus.OK).send({ message: 'User info saved successfully', user, tokens });
+  res.status(httpStatus.OK).send({ message: 'Registration completed successfully', user, tokens });
 });
 
 module.exports = {
@@ -71,5 +80,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   verifyOtp,
-  saveUserInfo,
+  completeRegistration,
 };

@@ -5,7 +5,7 @@ const imageController = require('../../controllers/image.controller');
 
 const router = express.Router();
 
-router.post('/upload', auth(), upload.array('images', 10), imageController.uploadImages);
+router.post('/upload', auth({ allowTemporary: true }), upload.array('images', 10), imageController.uploadImages);
 
 module.exports = router;
 

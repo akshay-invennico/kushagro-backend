@@ -2,6 +2,7 @@ const express = require('express');
 const validate = require('../../middlewares/validate');
 const authValidation = require('../../validations/auth.validation');
 const authController = require('../../controllers/auth.controller');
+const auth = require('../../middlewares/auth');
 
 const router = express.Router();
 
@@ -12,7 +13,12 @@ router.post('/logout', validate(authValidation.logout), authController.logout);
 router.post('/refresh-tokens', validate(authValidation.refreshTokens), authController.refreshTokens);
 router.post('/forgot/password', validate(authValidation.forgotPassword), authController.forgotPassword);
 router.post('/reset/password', validate(authValidation.resetPassword), authController.resetPassword);
-router.patch('/save/info', validate(authValidation.saveUserInfo), authController.saveUserInfo);
+router.patch(
+  '/registration/complete',
+  auth({ allowTemporary: true }),
+  validate(authValidation.completeRegistration),
+  authController.completeRegistration
+);
 
 module.exports = router;
 
@@ -132,9 +138,9 @@ module.exports = router;
 /**
  * @swagger
  * path:
- *  /auth/save/info:
+ *  /auth/registration/complete:
  *    patch:
- *      summary: Save user info
+ *      summary: Complete user registration
  *      tags: [Auth]
  *      requestBody:
  *        required: true
@@ -167,8 +173,8 @@ module.exports = router;
  *              example:
  *                email: fake@example.com
  *                phone: "9876543211"
- *                role: "user"
- *                governmentId: "1234567890"
+ *                role: "BUYER"
+ *                governmentId: "https://invennico-dev.s3.eu-north-1.amazonaws.com/images/1767681713997_image%20%281%29.png"
  *      responses:
  *        "201":
  *          description: Created
