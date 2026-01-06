@@ -16,7 +16,7 @@ const register = catchAsync(async (req, res) => {
   } else {
     await emailService.sendVerificationEmail(user.email, otp);
   }
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(httpStatus.CREATED).send({ user, message: 'OTP sent successfully.' });
 });
 
 const verifyOtp = catchAsync(async (req, res) => {
@@ -64,13 +64,13 @@ const refreshTokens = catchAsync(async (req, res) => {
 const forgotPassword = catchAsync(async (req, res) => {
   const { email, phone } = req.body;
   await authService.forgotPassword(email, phone);
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(httpStatus.OK).send({ message: 'OTP sent successfully.' });
 });
 
 const resetPassword = catchAsync(async (req, res) => {
   const { email, phone, otp, password } = req.body;
   await authService.resetPassword(email, phone, otp, password);
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(httpStatus.OK).send({ message: 'Password reset successfully.' });
 });
 
 const completeRegistration = catchAsync(async (req, res) => {

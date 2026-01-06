@@ -12,7 +12,8 @@ const getUser = catchAsync(async (req, res) => {
 });
 
 const updateUser = catchAsync(async (req, res) => {
-  const user = await userService.updateUserById(req.user._id, req.body);
+  const { userId } = req.params;
+  const user = await userService.updateUserById(userId, req.body);
   res.send(user);
 });
 

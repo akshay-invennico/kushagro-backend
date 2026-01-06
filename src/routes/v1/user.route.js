@@ -6,10 +6,8 @@ const userController = require('../../controllers/user.controller');
 
 const router = express.Router();
 
-router
-  .route('/')
-  .get(auth('getUsers'), validate(userValidation.getUser), userController.getUser)
-  .patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser);
+router.route('/').get(auth('getUsers'), validate(userValidation.getUser), userController.getUser);
+router.route('/:userId').patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser);
 
 module.exports = router;
 
