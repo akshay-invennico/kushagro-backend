@@ -1,14 +1,13 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const config = require('../config/config');
 const logger = require('../config/logger');
 
-const transport = nodemailer.createTransport(config.email.smtp);
+// Initialize SendGrid with API key
+sgMail.setApiKey(config.email.sendgrid.apiKey);
+
 /* istanbul ignore next */
 if (config.env !== 'test') {
-  transport
-    .verify()
-    .then(() => logger.info('Connected to email server'))
-    .catch(() => logger.warn('Unable to connect to email server. Make sure you have configured the SMTP options in .env'));
+  logger.info('Connected to Email Server');
 }
 
 /**
@@ -19,8 +18,20 @@ if (config.env !== 'test') {
  * @returns {Promise}
  */
 const sendEmail = async (to, subject, text) => {
-  const msg = { from: config.email.from, to, subject, text };
-  await transport.sendMail(msg);
+  const msg = {
+    to,
+    from: config.email.sendgrid.senderMail,
+    subject,
+    text,
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info(`Email sent successfully to ${to}`);
+  } catch (error) {
+    logger.error(`Error sending email to ${to}: ${error.message}`);
+    throw error;
+  }
 };
 
 /**
@@ -62,7 +73,6 @@ const sendForgotPasswordEmail = async (to, otp) => {
 };
 
 module.exports = {
-  transport,
   sendEmail,
   sendResetPasswordEmail,
   sendVerificationEmail,

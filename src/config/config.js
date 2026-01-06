@@ -17,6 +17,8 @@ const envVarsSchema = Joi.object()
     SMTP_USERNAME: Joi.string().description('username for email server'),
     SMTP_PASSWORD: Joi.string().description('password for email server'),
     EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
+    SENDGRID_API_KEY: Joi.string().required().description('SendGrid API key'),
+    SENDER_MAIL: Joi.string().required().description('SendGrid sender email address'),
     AWS_SECRET_ACCESS_KEY: Joi.string().description('aws s3 secret access key'),
     AWS_ACCESS_KEY_ID: Joi.string().required().description('aws s3 access key id'),
     AWS_BUCKET_REGION: Joi.string().required().description('aws s3 region'),
@@ -57,6 +59,10 @@ module.exports = {
       },
     },
     from: envVars.EMAIL_FROM,
+    sendgrid: {
+      apiKey: envVars.SENDGRID_API_KEY,
+      senderMail: envVars.SENDER_MAIL,
+    },
   },
   aws: {
     s3: {
