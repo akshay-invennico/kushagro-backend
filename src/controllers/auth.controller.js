@@ -44,6 +44,13 @@ const login = catchAsync(async (req, res) => {
   }
 });
 
+const loginAdmin = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await authService.loginAdminWithEmailAndPassword(email, password);
+  const tokens = await tokenService.generateAuthTokens(user);
+  res.send({ user, tokens });
+});
+
 const logout = catchAsync(async (req, res) => {
   await authService.logout(req.body.refreshToken);
   res.status(httpStatus.NO_CONTENT).send();
@@ -67,7 +74,7 @@ const resetPassword = catchAsync(async (req, res) => {
 });
 
 const completeRegistration = catchAsync(async (req, res) => {
-  const user = await authService.completeRegistration(req.user.id, req.body);
+  const user = await authService.completeRegistration(req.user._id, req.body);
   const tokens = await tokenService.generateAuthTokens(user);
   res.status(httpStatus.OK).send({ message: 'Registration completed successfully', user, tokens });
 });
@@ -75,6 +82,7 @@ const completeRegistration = catchAsync(async (req, res) => {
 module.exports = {
   register,
   login,
+  loginAdmin,
   logout,
   refreshTokens,
   forgotPassword,

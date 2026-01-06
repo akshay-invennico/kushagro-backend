@@ -19,7 +19,11 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
-  return user;
+
+  if (user.isVerified && user.isAccountVerified) {
+    return user;
+  }
+  throw new ApiError(httpStatus.UNAUTHORIZED, 'Please verify your account first');
 };
 
 const loginUserWithPhoneAndPassword = async (phone, password) => {
@@ -27,6 +31,27 @@ const loginUserWithPhoneAndPassword = async (phone, password) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect phone or password');
   }
+  if (user.isVerified && user.isAccountVerified) {
+    return user;
+  }
+  throw new ApiError(httpStatus.UNAUTHORIZED, 'Please verify your account first');
+};
+
+/**
+ * Login admin with email and password
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<User>}
+ */
+const loginAdminWithEmailAndPassword = async (email, password) => {
+  const user = await userService.getUserByEmail(email);
+  if (!user || !(await user.isPasswordMatch(password))) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+  }
+  if (user.role !== 'ADMIN') {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'You are not authorized to login as admin');
+  }
+
   return user;
 };
 
@@ -185,4 +210,5 @@ module.exports = {
   forgotPassword,
   completeRegistration,
   loginUserWithPhoneAndPassword,
+  loginAdminWithEmailAndPassword,
 };
