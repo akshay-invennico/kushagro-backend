@@ -41,9 +41,28 @@ const getCategories = catchAsync(async (req, res) => {
   });
 });
 
+const deleteCategory = catchAsync(async (req, res) => {
+  await categoryService.deleteCategory(req.params.categoryId);
+  res.send({
+    success: true,
+    message: 'Category deleted successfully',
+  });
+});
+
+const updateCategoryStatus = catchAsync(async (req, res) => {
+  const category = await categoryService.updateCategoryStatus(req.params.categoryId, req.body.status);
+  res.send({
+    success: true,
+    message: 'Category status updated successfully',
+    data: category,
+  });
+});
+
 module.exports = {
   createCategory,
   updateCategory,
   getCategory,
   getCategories,
+  deleteCategory,
+  updateCategoryStatus,
 };

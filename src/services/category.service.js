@@ -79,9 +79,31 @@ const getAllCategories = async () => {
   return Category.find().sort({ createdAt: -1 });
 };
 
+const deleteCategory = async (categoryId) => {
+  const category = await Category.findById(categoryId);
+  if (!category) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
+  }
+  await category.remove();
+  await CategoryField.deleteMany({ categoryId });
+  return category;
+};
+
+const updateCategoryStatus = async (categoryId, status) => {
+  const category = await Category.findById(categoryId);
+  if (!category) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
+  }
+  category.status = status;
+  await category.save();
+  return category;
+};
+
 module.exports = {
   createCategory,
   updateCategory,
   getCategoryWithFields,
   getAllCategories,
+  deleteCategory,
+  updateCategoryStatus,
 };

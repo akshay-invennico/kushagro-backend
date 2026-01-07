@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const { objectId } = require('./custom.validation');
 
 const fieldSchema = Joi.object({
   label: Joi.string().required(),
@@ -28,4 +29,17 @@ const updateCategory = {
 module.exports = {
   createCategory,
   updateCategory,
+  deleteCategory: {
+    params: Joi.object().keys({
+      categoryId: Joi.string().custom(objectId),
+    }),
+  },
+  updateCategoryStatus: {
+    params: Joi.object().keys({
+      categoryId: Joi.string().custom(objectId),
+    }),
+    body: Joi.object().keys({
+      status: Joi.string().valid('ACTIVE', 'INACTIVE').required(),
+    }),
+  },
 };
