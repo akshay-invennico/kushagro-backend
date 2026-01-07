@@ -74,7 +74,7 @@ const completeRegistration = {
       email: Joi.string().email(),
       phone: Joi.string(),
       role: Joi.string().required(),
-      governmentId: Joi.string().required(),
+      governmentId: Joi.string(),
     })
     .or('email', 'phone'),
 };
