@@ -20,6 +20,7 @@ router.patch(
   validate(authValidation.completeRegistration),
   authController.completeRegistration
 );
+router.post('/verify/forgot/otp', validate(authValidation.verifyOtp), authController.verifyForgotOtp);
 
 module.exports = router;
 
@@ -134,6 +135,59 @@ module.exports = router;
  *                    $ref: '#/components/schemas/AuthTokens'
  *        "400":
  *          $ref: '#/components/responses/DuplicateEmail'
+ */
+
+/**
+ * @swagger
+ * path:
+ *  /auth/verify/forgot/otp:
+ *    post:
+ *      summary: Verify Forgot Password OTP
+ *      tags: [Auth]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              required:
+ *                - email
+ *                - phone
+ *                - otp
+ *              properties:
+ *                email:
+ *                  type: string
+ *                  format: email
+ *                otp:
+ *                  type: string
+ *              example:
+ *                email: fake@example.com
+ *                otp: "123456"
+ *      responses:
+ *        "200":
+ *          description: OK
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  success:
+ *                    type: boolean
+ *                  message:
+ *                    type: string
+ *                  data:
+ *                    type: object
+ *                    nullable: true
+ *                  meta:
+ *                    type: object
+ *                    nullable: true
+ *                  error:
+ *                    type: object
+ *                    nullable: true
+ *        "400":
+ *          $ref: '#/components/responses/DuplicateEmail'
+ *        "404":
+ *          $ref: '#/components/responses/NotFound'
  */
 
 /**

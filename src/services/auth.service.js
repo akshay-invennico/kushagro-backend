@@ -186,19 +186,60 @@ const completeRegistration = async (userId, body) => {
   }
 
   if (!user.isVerified) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your email/phone first');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your account first');
   }
 
   if (user.isAccountVerified) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Registration already completed');
   }
 
-  if (!role || !governmentId) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Role and government ID are required');
+  if (!role) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Role is required');
   }
 
-  const updatedUser = await userService.updateUserById(user.id, { role, governmentId, isAccountVerified: true });
+  if (role !== 'BUYER' && !governmentId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Government ID is required');
+  }
+
+  const updatePayload = {
+    role,
+    isAccountVerified: true,
+  };
+
+  if (role !== 'BUYER') {
+    updatePayload.governmentId = governmentId;
+  }
+
+  const updatedUser = await userService.updateUserById(user.id, updatePayload);
+
   return updatedUser;
+};
+
+const verifyForgotOtp = async (body) => {
+  const { email, phone, otp } = body;
+  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+
+  if (!user.isVerified || !user.isAccountVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User is not verified or account is not verified');
+  }
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (!user.otp || !user.otpExpiresAt) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP not found or already used');
+  }
+
+  if (user.otpExpiresAt < Date.now()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP has expired');
+  }
+
+  if (Number(user.otp) !== Number(otp)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP');
+  }
+
+  return user;
 };
 
 module.exports = {
@@ -211,4 +252,5 @@ module.exports = {
   completeRegistration,
   loginUserWithPhoneAndPassword,
   loginAdminWithEmailAndPassword,
+  verifyForgotOtp,
 };
