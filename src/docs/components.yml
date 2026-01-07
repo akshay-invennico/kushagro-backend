@@ -39,6 +39,82 @@ components:
         refresh:
           $ref: '#/components/schemas/Token'
 
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+      example:
+        id: 5ebac534954b54139806c112
+        name: Electronics
+        slug: electronics
+        status: ACTIVE
+
+    CategoryField:
+      type: object
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        label:
+          type: string
+        key:
+          type: string
+        type:
+          type: string
+          enum: [TEXT, NUMBER, DROPDOWN, TEXTAREA]
+        options:
+          type: array
+          items:
+            type: string
+        isRequired:
+          type: boolean
+        order:
+          type: number
+      example:
+        id: 5ebac534954b54139806c112
+        categoryId: 5ebac534954b54139806c112
+        label: Brand
+        key: brand
+        type: DROPDOWN
+        options: [Apple, Samsung]
+        isRequired: true
+        order: 1
+
+    CategoryFieldInput:
+      type: object
+      properties:
+        label:
+          type: string
+        key:
+          type: string
+        type:
+          type: string
+          enum: [TEXT, NUMBER, DROPDOWN, TEXTAREA]
+        options:
+          type: array
+          items:
+            type: string
+        isRequired:
+          type: boolean
+        order:
+          type: number
+      example:
+        label: Brand
+        key: brand
+        type: DROPDOWN
+        options: [Apple, Samsung]
+        isRequired: true
+        order: 1
+
     Error:
       type: object
       properties:
