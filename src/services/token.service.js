@@ -90,11 +90,11 @@ const generateAuthTokens = async (user) => {
  * @returns {Promise<Object>}
  */
 const generateTemporaryAuthTokens = async (user) => {
-  // Temporary access token with shorter expiration (1 hour)
-  const accessTokenExpires = moment().add(60, 'minutes');
+  // Temporary access token with shorter expiration (1 day)
+  const accessTokenExpires = moment().add(1, 'days');
   const accessToken = generateToken(user.id, accessTokenExpires, tokenTypes.TEMPORARY_ACCESS);
 
-  // Temporary refresh token with 24 hours expiration
+  // Temporary refresh token with (1 day) expiration
   const refreshTokenExpires = moment().add(1, 'days');
   const refreshToken = generateToken(user.id, refreshTokenExpires, tokenTypes.REFRESH);
   await saveToken(refreshToken, user.id, refreshTokenExpires, tokenTypes.REFRESH);
