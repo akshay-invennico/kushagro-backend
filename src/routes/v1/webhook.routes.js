@@ -4,6 +4,6 @@ const { handlePaystackWebhook } = require('../../controllers/webhook.controller'
 
 const router = express.Router();
 
-router.post('/paystack', handlePaystackWebhook);
+router.post('/', handlePaystackWebhook);
 
 module.exports = router;

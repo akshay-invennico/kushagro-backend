@@ -1,16 +1,24 @@
 const crypto = require('crypto');
-const webhookService = require('../services/webhook.service');
+const dotenv = require('dotenv');
+const path = require('path');
+const { processWebhook } = require('../services/webhook.service');
+
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const handlePaystackWebhook = async (req, res) => {
   const secret = process.env.PAYSTACK_SECRET_KEY;
-  const signature = req.headers['x-paystack-signature'];
+
   const hash = crypto.createHmac('sha512', secret).update(req.body).digest('hex');
 
-  if (!signature || !crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(signature))) {
+  const signature = req.headers['x-paystack-signature'];
+
+  if (!signature || hash !== signature) {
     return res.sendStatus(401);
   }
 
-  await webhookService.processWebhook(req.body);
+  const payload = JSON.parse(req.body.toString());
+
+  await processWebhook(payload);
 
   return res.sendStatus(200);
 };

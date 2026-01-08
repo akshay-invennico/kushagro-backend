@@ -8,7 +8,7 @@ const paymentSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    order_Id: {
+    orderId: {
       type: Types.ObjectId,
       required: true,
     },
@@ -16,11 +16,11 @@ const paymentSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    buyer_Id: {
+    buyerId: {
       type: Types.ObjectId,
       required: true,
     },
-    seller_Id: {
+    sellerId: {
       type: Types.ObjectId,
       required: true,
     },

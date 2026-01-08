@@ -1,4 +1,5 @@
 const paystack = require('../config/payStack');
+const Order = require('../models/order.model');
 const Payment = require('../models/payment.model');
 const SellerAccountDetails = require('../models/sellerAccountDetails');
 
@@ -8,13 +9,14 @@ const testPaystackConnection = async () => {
 };
 
 const initializePayment = async (payload) => {
-  const { email, amount, orderId, buyerId, sellerId } = payload;
+  const { email, orderId, buyerId, sellerId } = payload;
 
-  if (!email || !amount || !orderId) {
-    throw new Error('email, amount, and orderId are required');
+  if (!email || !orderId) {
+    throw new Error('email, and orderId are required');
   }
+  const orderDetails = await Order.findById(orderId);
 
-  const paystackAmount = Math.round(amount * 100);
+  const paystackAmount = Math.round(orderDetails.paybleAmount * 100);
 
   const response = await paystack.post('/transaction/initialize', {
     email,
@@ -36,9 +38,8 @@ const initializePayment = async (payload) => {
     buyerId,
     sellerId,
     status: 'Pending',
-    amount,
+    amount: paystackAmount / 100,
     currency: 'NGN',
-    adminCommission: amount * (Number(process.env.Admin_commision) / 100),
     date: new Date(),
   });
 
@@ -98,16 +99,16 @@ const createSellerBankAccount = async (payload) => {
   });
 };
 
-const paySeller = async ({ sellerId, orderId, totalAmount }) => {
+const paySeller = async ({ sellerId, orderId }) => {
   const sellerAccount = await SellerAccountDetails.findOne({ sellerId, status: true });
 
   if (!sellerAccount) {
     throw new Error('Seller payout account not found');
   }
 
-  const commissionPercent = Number(process.env.Admin_commision || 10);
-  const adminCommission = (totalAmount * commissionPercent) / 100;
-  const sellerAmount = totalAmount - adminCommission;
+  const orderDetails = await Order.findById(orderId);
+  const platformCharges = Number(orderDetails.platformCharges);
+  const sellerAmount = Number(orderDetails.paybleAmount) - platformCharges;
 
   const response = await paystack.post('/transfer', {
     source: 'balance',
@@ -121,7 +122,6 @@ const paySeller = async ({ sellerId, orderId, totalAmount }) => {
     sellerId,
     type: 'Payout',
     amount: sellerAmount,
-    adminCommission,
     reference: response.data.data.reference,
     status: 'Pending',
   });
@@ -130,7 +130,7 @@ const paySeller = async ({ sellerId, orderId, totalAmount }) => {
 };
 
 const refundBuyer = async (payload) => {
-  const { orderId, reference, reason, amount, buyerId, sellerId } = payload;
+  const { orderId, reference, reason, buyerId, sellerId } = payload;
 
   const buyerPayment = await Payment.findOne({
     reference,
@@ -153,10 +153,11 @@ const refundBuyer = async (payload) => {
     reason: reason || `Refund for order ${orderId}`,
   };
 
-  if (amount) {
-    refundPayload.amount = Math.round(amount * 100);
-  }
+  const orderDetails = await Order.findById(orderId);
 
+  if (orderDetails) {
+    refundPayload.amount = Math.round(orderDetails.paybleAmount * 100);
+  }
   const response = await paystack.post('/refund', refundPayload);
 
   await Payment.create({
@@ -164,7 +165,7 @@ const refundBuyer = async (payload) => {
     buyerId,
     sellerId,
     type: 'Refund',
-    amount: amount || response.data.data.amount / 100,
+    amount: orderDetails.paybleAmount,
     reference,
     status: 'Refund initiated',
     refundReason: refundPayload.reason,
