@@ -9,7 +9,7 @@ const register = catchAsync(async (req, res) => {
 
   let user = await userService.getUserByEmailOrPhone(email, phone);
 
-  if (user && user.isVerified) {
+  if (user && user.isVerified && user.isAccountVerified) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'User already exists. Please login.');
   }
 
