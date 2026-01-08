@@ -13,7 +13,7 @@ const register = catchAsync(async (req, res) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'User already exists. Please login.');
   }
 
-  if (user && !user.isVerified) {
+  if (user && (!user.isVerified || !user.isAccountVerified)) {
     const otp = generateOtp();
     user.otp = otp;
     user.otpExpiresAt = Date.now() + 15 * 60 * 1000;
