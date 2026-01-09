@@ -20,6 +20,10 @@ const loginUserWithEmailAndPassword = async (email, password) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
 
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Your account is not active');
+  }
+
   if (user.isVerified && user.isAccountVerified) {
     return user;
   }
@@ -31,6 +35,11 @@ const loginUserWithPhoneAndPassword = async (phone, password) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect phone or password');
   }
+
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Your account is not active');
+  }
+
   if (user.isVerified && user.isAccountVerified) {
     return user;
   }

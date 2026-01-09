@@ -8,6 +8,13 @@ const router = express.Router();
 
 router.route('/').get(auth('getUsers'), validate(userValidation.getUser), userController.getUser);
 router.route('/:userId').patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser);
+router
+  .route('/change/password')
+  .post(auth('manageUsers'), validate(userValidation.changePassword), userController.changePassword);
+router
+  .route('/delete/account')
+  .patch(auth('manageUsers'), validate(userValidation.deleteAccount), userController.deleteAccount);
+router.route('/report/:userId').post(auth('manageUsers'), validate(userValidation.reportUser), userController.reportUser);
 
 module.exports = router;
 
@@ -118,4 +125,141 @@ module.exports = router;
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users/change/password:
+ *   post:
+ *     summary: Change password
+ *     description: Logged-in users can change their password.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *               - confirmPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *               confirmPassword:
+ *                 type: string
+ *     responses:
+ *       "204":
+ *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users/delete/account:
+ *   patch:
+ *     summary: Delete account
+ *     description: Logged-in users can delete their account.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - password
+ *             properties:
+ *               password:
+ *                 type: string
+ *               reason:
+ *                  type: string
+ *               options:
+ *                  type: array
+ *                  items:
+ *                    type: string
+ *     responses:
+ *       "204":
+ *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users/report/{userId}:
+ *   post:
+ *     summary: Report a user
+ *     description: Allows an authorized user to report another user for inappropriate behavior.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user being reported
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: Inappropriate Behaviour
+ *               image:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://example-bucket.s3.amazonaws.com/images/report.png
+ *     responses:
+ *       "200":
+ *         description: User reported successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User reported successfully
+ *                 data:
+ *                   type: object
+ *                   nullable: true
+ *                   example: null
+ *                 meta:
+ *                   type: object
+ *                   example: {}
+ *                 error:
+ *                   type: object
+ *                   nullable: true
+ *                   example: null
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         description: User not found
+ *       "400":
+ *         description: Invalid request payload
  */

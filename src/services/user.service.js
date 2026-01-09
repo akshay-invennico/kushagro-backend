@@ -1,5 +1,5 @@
 const httpStatus = require('http-status');
-const { User } = require('../models');
+const { User, Report } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 /**
@@ -115,6 +115,70 @@ const deleteUserById = async (userId) => {
   return user;
 };
 
+/**
+ * Change password
+ * @param {ObjectId} userId
+ * @param {string} currentPassword
+ * @param {string} newPassword
+ * @returns {Promise<User>}
+ */
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (!(await user.isPasswordMatch(currentPassword))) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect current password');
+  }
+  user.password = newPassword;
+  await user.save();
+  return user;
+};
+
+/**
+ * Delete account with password confirmation
+ * @param {ObjectId} userId
+ * @param {string} password
+ * @returns {Promise<User>}
+ */
+const deleteAccount = async (userId, password) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (!(await user.isPasswordMatch(password))) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect password');
+  }
+  user.isActive = false;
+  await user.save();
+  return user;
+};
+
+/**
+ * Report a user
+ * @param {ObjectId} reporterId
+ * @param {ObjectId} reportedId
+ * @param {Object} reportBody
+ * @returns {Promise<Report>}
+ */
+const reportUser = async (reporterId, reportedId, reportBody) => {
+  const reportedUser = await getUserById(reportedId);
+  if (!reportedUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const report = await Report.create({
+    reporterId,
+    reportedId,
+    ...reportBody,
+  });
+
+  reportedUser.isReported = true;
+  await reportedUser.save();
+
+  return report;
+};
+
 module.exports = {
   createUser,
   queryUsers,
@@ -124,4 +188,7 @@ module.exports = {
   deleteUserById,
   getUserByPhone,
   getUserByEmailOrPhone,
+  changePassword,
+  deleteAccount,
+  reportUser,
 };
