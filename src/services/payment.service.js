@@ -9,20 +9,46 @@ const testPaystackConnection = async () => {
 };
 
 const initializePayment = async (payload) => {
+  if (!payload) {
+    throw new Error('Payload is required');
+  }
+
   const { email, orderId, buyerId, sellerId } = payload;
 
   if (!email || !orderId) {
-    throw new Error('email, and orderId are required');
+    throw new Error('email and orderId are required');
   }
-  const orderDetails = await Order.findById(orderId);
 
-  const paystackAmount = Math.round(orderDetails.paybleAmount * 100);
+  const orderDetails = await Order.findById(orderId);
+  if (!orderDetails) {
+    throw new Error('Order not found');
+  }
+
+  const existingPayment = await Payment.findOne({
+    orderId,
+    status: { $in: ['Pending', 'Payment success'] },
+  });
+
+  if (existingPayment) {
+    throw new Error(
+      existingPayment.status === 'Pending'
+        ? 'Payment has already been initialized for this order'
+        : 'Payment has already been completed for this order'
+    );
+  }
+
+  const payableAmount = Number(orderDetails.paybleAmount);
+  if (Number.isNaN(payableAmount) || payableAmount <= 0) {
+    throw new Error('Invalid payable amount');
+  }
+
+  const paystackAmount = Math.round(payableAmount * 100);
 
   const response = await paystack.post('/transaction/initialize', {
     email,
     amount: paystackAmount,
     currency: 'NGN',
-    channels: ['card'],
+    channels: ['card', 'mobile_money'],
     metadata: {
       orderId,
       buyerId,
@@ -31,21 +57,23 @@ const initializePayment = async (payload) => {
     },
   });
 
+  const { authorization_url: authorizationUrl, reference } = response.data.data;
+
   await Payment.create({
     type: 'PayIn',
     orderId,
-    reference: response.data.data.reference,
+    reference,
     buyerId,
     sellerId,
     status: 'Pending',
-    amount: paystackAmount / 100,
+    amount: payableAmount,
     currency: 'NGN',
     date: new Date(),
   });
 
   return {
-    authorizationUrl: response.data.data.authorization_url,
-    reference: response.data.data.reference,
+    authorizationUrl,
+    reference,
   };
 };
 
@@ -99,16 +127,58 @@ const createSellerBankAccount = async (payload) => {
   });
 };
 
-const paySeller = async ({ sellerId, orderId }) => {
-  const sellerAccount = await SellerAccountDetails.findOne({ sellerId, status: true });
+const paySeller = async (payload) => {
+  if (!payload) {
+    throw new Error('Payload is required');
+  }
+
+  const { sellerId, orderId } = payload;
+
+  if (!sellerId || !orderId) {
+    throw new Error('sellerId and orderId are required');
+  }
+
+  const sellerAccount = await SellerAccountDetails.findOne({
+    sellerId,
+    status: true,
+  });
 
   if (!sellerAccount) {
     throw new Error('Seller payout account not found');
   }
 
   const orderDetails = await Order.findById(orderId);
+  if (!orderDetails) {
+    throw new Error('Order not found');
+  }
+
+  const existingPayout = await Payment.findOne({
+    orderId,
+    sellerId,
+    type: 'Payout',
+    status: { $in: ['Pending', 'Payout success'] },
+  });
+
+  if (existingPayout) {
+    throw new Error(
+      existingPayout.status === 'Pending'
+        ? 'Seller payout is already pending for this order'
+        : 'Seller payout has already been completed for this order'
+    );
+  }
+
+  const payableAmount = Number(orderDetails.paybleAmount);
   const platformCharges = Number(orderDetails.platformCharges);
-  const sellerAmount = Number(orderDetails.paybleAmount) - platformCharges;
+
+  if (Number.isNaN(payableAmount) || Number.isNaN(platformCharges) || payableAmount <= 0 || platformCharges < 0) {
+    throw new Error('Invalid order amounts');
+  }
+
+  const sellerAmount = payableAmount - platformCharges;
+
+  if (sellerAmount <= 0) {
+    throw new Error('Invalid seller payout amount');
+  }
 
   const response = await paystack.post('/transfer', {
     source: 'balance',
@@ -124,6 +194,8 @@ const paySeller = async ({ sellerId, orderId }) => {
     amount: sellerAmount,
     reference: response.data.data.reference,
     status: 'Pending',
+    currency: orderDetails.currency || 'NGN',
+    date: new Date(),
   });
 
   return response.data.data;
@@ -145,7 +217,7 @@ const refundBuyer = async (payload) => {
   const existingRefund = await Payment.findOne({ reference, type: 'Refund' });
 
   if (existingRefund) {
-    throw new Error('Refund already initiated');
+    throw new Error('Refund already initiated or Completed');
   }
 
   const refundPayload = {
