@@ -74,6 +74,16 @@ const getProduct = catchAsync(async (req, res) => {
   });
 });
 
+const getProductsBySellerId = catchAsync(async (req, res) => {
+  const sellerId = req.params;
+  const products = await productService.getProductBySellerId(sellerId);
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Seller products fetched successfully',
+    data: products,
+  });
+});
+
 const updateProduct = catchAsync(async (req, res) => {
   const product = await productService.getProductById(req.params.productId);
 
@@ -114,4 +124,5 @@ module.exports = {
   getProduct,
   updateProduct,
   deleteProduct,
+  getProductsBySellerId,
 };

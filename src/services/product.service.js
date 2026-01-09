@@ -40,6 +40,15 @@ const getProductById = async (id) => {
 };
 
 /**
+ * Get product by seller id
+ * @param {ObjectId} sellerId
+ * @returns {Promise<Product>}
+ */
+const getProductBySellerId = async (sellerId) => {
+  return Product.find(sellerId);
+};
+
+/**
  * Update product by id
  * @param {ObjectId} productId
  * @param {Object} updateBody
@@ -75,4 +84,5 @@ module.exports = {
   getProductById,
   updateProductById,
   deleteProductById,
+  getProductBySellerId,
 };
