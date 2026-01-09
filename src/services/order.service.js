@@ -5,6 +5,7 @@ const Order = require('../models/order.model');
 const User = require('../models/user.model');
 const Payment = require('../models/payment.model');
 const ApiError = require('../utils/ApiError');
+const config = require('../config/config');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { sendVerificationEmail } = require('./email.service');
@@ -23,22 +24,18 @@ const createOrder = async (payload) => {
   const orderNumber = generateOrderNumber();
   const otp = generateOTP();
   const subTotal = quantity * price;
-  const taxRate = Number(process.env.ADMIN_TAX);
-  const platformChargePer = Number(process.env.PLATFORM_CHARGE);
+  const taxRate = Number(config.order.tax);
+  const platformChargePer = Number(config.order.platformCharges);
   const taxAmount = (subTotal * taxRate) / 100;
   const platformCharges = (subTotal * platformChargePer) / 100;
   const totalAmount = subTotal + taxAmount + platformCharges;
   const paybleAmount = subTotal + taxAmount + platformCharges;
 
-  if (!quantity || !price || !buyerId || !sellerId || !productId) {
-    throw new Error('quantity,price,buyerId,sellerId,productId are required');
-  }
-
   const checkBuyer = await User.findOne({ _id: buyerId, role: 'BUYER' });
   const checkSeller = await User.findOne({ _id: sellerId, role: 'SELLER' });
 
   if (!checkBuyer || !checkSeller) {
-    throw new Error('Invalid BuyerId or sellerId please');
+    throw new Error('Invalid BuyerId or sellerId please check it');
   }
 
   const orderSchema = {
@@ -65,10 +62,6 @@ const createOrder = async (payload) => {
 
 const getAllOrders = async (userId, query) => {
   const { status } = query;
-  if (!status) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Status query is required');
-  }
-
   const statusMap = {
     ongoing: 'PENDING',
     completed: 'COMPLETED',
@@ -109,11 +102,6 @@ const getorderById = async (payload) => {
 
 const updateOrder = async (payload) => {
   const { orderIds } = payload;
-
-  if (!Array.isArray(orderIds) || orderIds.length === 0) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'orderIds must be a non-empty array');
-  }
-
   const successfulPayments = await Payment.find({
     orderId: { $in: orderIds },
     type: 'PayIn',

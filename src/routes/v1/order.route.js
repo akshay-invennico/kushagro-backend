@@ -1,5 +1,7 @@
 const express = require('express');
 const auth = require('../../middlewares/auth');
+const validate = require('../../middlewares/validate');
+const orderValidation = require('../../validations/order.validation');
 
 const {
   createOrder,
@@ -12,12 +14,12 @@ const {
 
 const router = express.Router();
 
-router.post('/create/order', createOrder);
-router.get('/getall/order', auth(), getOrders);
-router.get('/getbyId', getorderById);
-router.patch('/update/order', updateOrder);
-router.post('/sendotp', sendOrderOtp);
-router.get('/verifyotp', verifyOrderOtp);
+router.post('/create/order', validate(orderValidation.createOrder), createOrder);
+router.get('/getall/order', auth(), validate(orderValidation.getAllOrders), getOrders);
+router.get('/getbyId', validate(orderValidation.getOrderById), getorderById);
+router.patch('/update/order', validate(orderValidation.updateOrder), updateOrder);
+router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
+router.get('/verifyotp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
 
 module.exports = router;
 

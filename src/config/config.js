@@ -64,6 +64,13 @@ module.exports = {
       senderMail: envVars.SENDER_MAIL,
     },
   },
+  payment: {
+    paystackSecretKey: envVars.PAYSTACK_SECRET_KEY,
+  },
+  order: {
+    tax: envVars.ADMIN_TAX,
+    platformCharges: envVars.PLATFORM_CHARGE,
+  },
   aws: {
     s3: {
       secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY,
