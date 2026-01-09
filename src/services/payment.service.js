@@ -14,11 +14,6 @@ const initializePayment = async (payload) => {
   }
 
   const { email, orderId, buyerId, sellerId } = payload;
-
-  if (!email || !orderId) {
-    throw new Error('email and orderId are required');
-  }
-
   const orderDetails = await Order.findById(orderId);
   if (!orderDetails) {
     throw new Error('Order not found');
