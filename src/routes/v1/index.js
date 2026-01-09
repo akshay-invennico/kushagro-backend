@@ -3,6 +3,8 @@ const authRoute = require('./auth.route');
 const userRoute = require('./user.route');
 const docsRoute = require('./docs.route');
 const imageRoute = require('./image.route');
+const payStackRoute = require('./payment.route');
+const orderRoute = require('./order.route');
 const categoryRoute = require('./category.route');
 const productRoute = require('./product.route');
 const config = require('../../config/config');
@@ -21,6 +23,14 @@ const defaultRoutes = [
   {
     path: '/images',
     route: imageRoute,
+  },
+  {
+    path: '/paystack',
+    route: payStackRoute,
+  },
+  {
+    path: '/order',
+    route: orderRoute,
   },
   {
     path: '/category',
