@@ -5,6 +5,8 @@ const docsRoute = require('./docs.route');
 const imageRoute = require('./image.route');
 const payStackRoute = require('./payment.route');
 const orderRoute = require('./order.route');
+const categoryRoute = require('./category.route');
+const productRoute = require('./product.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -29,6 +31,14 @@ const defaultRoutes = [
   {
     path: '/order',
     route: orderRoute,
+  },
+  {
+    path: '/category',
+    route: categoryRoute,
+  },
+  {
+    path: '/product',
+    route: productRoute,
   },
 ];
 

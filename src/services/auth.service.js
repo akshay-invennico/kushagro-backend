@@ -19,7 +19,11 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
-  return user;
+
+  if (user.isVerified && user.isAccountVerified) {
+    return user;
+  }
+  throw new ApiError(httpStatus.UNAUTHORIZED, 'Please verify your account first');
 };
 
 const loginUserWithPhoneAndPassword = async (phone, password) => {
@@ -27,6 +31,27 @@ const loginUserWithPhoneAndPassword = async (phone, password) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect phone or password');
   }
+  if (user.isVerified && user.isAccountVerified) {
+    return user;
+  }
+  throw new ApiError(httpStatus.UNAUTHORIZED, 'Please verify your account first');
+};
+
+/**
+ * Login admin with email and password
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<User>}
+ */
+const loginAdminWithEmailAndPassword = async (email, password) => {
+  const user = await userService.getUserByEmail(email);
+  if (!user || !(await user.isPasswordMatch(password))) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+  }
+  if (user.role !== 'ADMIN') {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'You are not authorized to login as admin');
+  }
+
   return user;
 };
 
@@ -161,19 +186,60 @@ const completeRegistration = async (userId, body) => {
   }
 
   if (!user.isVerified) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your email/phone first');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your account first');
   }
 
   if (user.isAccountVerified) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Registration already completed');
   }
 
-  if (!role || !governmentId) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Role and government ID are required');
+  if (!role) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Role is required');
   }
 
-  const updatedUser = await userService.updateUserById(user.id, { role, governmentId, isAccountVerified: true });
+  if (role !== 'BUYER' && !governmentId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Government ID is required');
+  }
+
+  const updatePayload = {
+    role,
+    isAccountVerified: true,
+  };
+
+  if (role !== 'BUYER') {
+    updatePayload.governmentId = governmentId;
+  }
+
+  const updatedUser = await userService.updateUserById(user.id, updatePayload);
+
   return updatedUser;
+};
+
+const verifyForgotOtp = async (body) => {
+  const { email, phone, otp } = body;
+  const user = email ? await userService.getUserByEmail(email) : await userService.getUserByPhone(phone);
+
+  if (!user.isVerified || !user.isAccountVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User is not verified or account is not verified');
+  }
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (!user.otp || !user.otpExpiresAt) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP not found or already used');
+  }
+
+  if (user.otpExpiresAt < Date.now()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP has expired');
+  }
+
+  if (Number(user.otp) !== Number(otp)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid OTP');
+  }
+
+  return user;
 };
 
 module.exports = {
@@ -185,4 +251,6 @@ module.exports = {
   forgotPassword,
   completeRegistration,
   loginUserWithPhoneAndPassword,
+  loginAdminWithEmailAndPassword,
+  verifyForgotOtp,
 };

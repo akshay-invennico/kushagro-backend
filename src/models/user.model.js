@@ -45,11 +45,13 @@ const userSchema = mongoose.Schema(
     profile: {
       type: String,
       trim: true,
+      default: null,
     },
 
     address: {
       type: String,
       trim: true,
+      default: null,
     },
 
     bio: {
@@ -60,6 +62,7 @@ const userSchema = mongoose.Schema(
 
     governmentId: {
       type: String,
+      default: null,
     },
 
     password: {

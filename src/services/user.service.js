@@ -62,6 +62,26 @@ const getUserByPhone = async (phone) => {
   return User.findOne({ phone });
 };
 
+const getUserByEmailOrPhone = async (email, phone) => {
+  if (!email && !phone) {
+    return null;
+  }
+
+  const query = {
+    $or: [],
+  };
+
+  if (email) {
+    query.$or.push({ email: email.toLowerCase() });
+  }
+
+  if (phone) {
+    query.$or.push({ phone });
+  }
+
+  return User.findOne(query);
+};
+
 /**
  * Update user by id
  * @param {ObjectId} userId
@@ -103,4 +123,5 @@ module.exports = {
   updateUserById,
   deleteUserById,
   getUserByPhone,
+  getUserByEmailOrPhone,
 };
