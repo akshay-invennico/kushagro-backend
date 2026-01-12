@@ -23,7 +23,7 @@ const getOrders = async (req, res) => {
 };
 
 const getorderById = catchAsync(async (req, res) => {
-  const data = await orderService.getorderById(req.query);
+  const data = await orderService.getorderById(req.params.orderId);
   if (!data) {
     res.status(httpStatus.NOT_FOUND).send({
       success: false,

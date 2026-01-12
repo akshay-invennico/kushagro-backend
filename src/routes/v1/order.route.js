@@ -16,10 +16,10 @@ const router = express.Router();
 
 router.post('/', validate(orderValidation.createOrder), createOrder);
 router.get('/allorders', auth(), validate(orderValidation.getAllOrders), getOrders);
-router.get('/byId', validate(orderValidation.getOrderById), getorderById);
+router.get('/:orderId', validate(orderValidation.getOrderById), getorderById);
 router.patch('/update', validate(orderValidation.updateOrder), updateOrder);
 router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
-router.get('/verifyotp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
+router.get('/verify/otp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
 
 module.exports = router;
 
