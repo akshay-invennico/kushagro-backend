@@ -38,7 +38,7 @@ const queryProducts = async (filter, options) => {
       .limit(limit)
       .populate({
         path: 'sellerId',
-        select: '_id name profile',
+        select: '_id name profile email phone',
       })
       .lean(),
   ]);
