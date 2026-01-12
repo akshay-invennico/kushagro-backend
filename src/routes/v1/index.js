@@ -8,6 +8,7 @@ const orderRoute = require('./order.route');
 const categoryRoute = require('./category.route');
 const productRoute = require('./product.route');
 const ticketRoute = require('./ticket.route');
+const ratingRoute = require('./rating.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -44,6 +45,10 @@ const defaultRoutes = [
   {
     path: '/ticket',
     route: ticketRoute,
+  },
+  {
+    path: '/rating',
+    route: ratingRoute,
   },
 ];
 
