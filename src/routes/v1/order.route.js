@@ -14,10 +14,10 @@ const {
 
 const router = express.Router();
 
-router.post('/create/order', validate(orderValidation.createOrder), createOrder);
-router.get('/getall/order', auth(), validate(orderValidation.getAllOrders), getOrders);
-router.get('/getbyId', validate(orderValidation.getOrderById), getorderById);
-router.patch('/update/order', validate(orderValidation.updateOrder), updateOrder);
+router.post('/', validate(orderValidation.createOrder), createOrder);
+router.get('/allorders', auth(), validate(orderValidation.getAllOrders), getOrders);
+router.get('/byId', validate(orderValidation.getOrderById), getorderById);
+router.patch('/update', validate(orderValidation.updateOrder), updateOrder);
 router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
 router.get('/verifyotp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
 
@@ -32,7 +32,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /create/order:
+ * /:
  *   post:
  *     summary: Create order
  *     tags: [Orders]
@@ -46,20 +46,15 @@ module.exports = router;
  *               - quantity
  *               - price
  *               - buyerId
- *               - sellerId
  *               - productId
  *             properties:
  *               quantity:
  *                 type: number
  *               unit:
  *                 type: string
- *               price:
- *                 type: number
  *               note:
  *                 type: string
  *               buyerId:
- *                 type: string
- *               sellerId:
  *                 type: string
  *               productId:
  *                 type: string

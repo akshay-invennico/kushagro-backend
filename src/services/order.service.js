@@ -2,6 +2,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const httpStatus = require('http-status');
 const Order = require('../models/order.model');
+const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Payment = require('../models/payment.model');
 const ApiError = require('../utils/ApiError');
@@ -20,7 +21,10 @@ function generateOTP() {
 }
 
 const createOrder = async (payload) => {
-  const { quantity, unit, price, note, buyerId, sellerId, productId } = payload;
+  const { quantity, unit, note, buyerId, productId } = payload;
+  const productDetails = await Product.findById(productId);
+  const { price } = productDetails;
+  const { sellerId } = productDetails;
   const orderNumber = generateOrderNumber();
   const otp = generateOTP();
   const subTotal = quantity * price;
