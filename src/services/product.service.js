@@ -40,6 +40,10 @@ const queryProducts = async (filter, options) => {
         path: 'sellerId',
         select: '_id name profile email phone',
       })
+      .populate({
+        path: 'categoryId',
+        select: '_id name slug',
+      })
       .lean(),
   ]);
 
@@ -60,7 +64,7 @@ const queryProducts = async (filter, options) => {
  * @returns {Promise<Product>}
  */
 const getProductById = async (id) => {
-  return Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug');
+  return Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug').lean();
 };
 
 /**
