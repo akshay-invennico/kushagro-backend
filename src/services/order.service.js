@@ -11,6 +11,7 @@ const config = require('../config/config');
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { sendVerificationEmail } = require('./email.service');
 const { sendOtpSms } = require('./sms.service');
+const notificationService = require('./notification.service');
 
 function generateOrderNumber() {
   return Math.floor(100000 + Math.random() * 900000);
@@ -59,6 +60,25 @@ const createOrder = async (payload) => {
     OTP: otp,
   };
   const orderResponse = await Order.create(orderSchema);
+
+  // notification for seller
+  await notificationService.createNotification({
+    recipient: sellerId,
+    title: 'New Order Received',
+    message: `New Order Received! Order #${orderNumber} has been placed.`,
+    type: 'ORDER_PLACED',
+    data: { orderId: orderResponse.id, role: 'SELLER' },
+  });
+
+  // notification for buyer
+  await notificationService.createNotification({
+    recipient: buyerId,
+    title: 'Order Placed',
+    message: `Order Placed! Your order #${orderNumber} has been placed successfully.`,
+    type: 'ORDER_PLACED',
+    data: { orderId: orderResponse.id, role: 'BUYER' },
+  });
+
   return {
     orederData: orderResponse,
   };
@@ -168,6 +188,24 @@ const verifyOtpUpdateOrder = async (payload) => {
 
     if (successfulPayments) {
       await Order.findByIdAndUpdate({ _id: orderId }, { $set: { status: 'COMPLETED' } });
+
+      // notification for buyer
+      await notificationService.createNotification({
+        recipient: orderDetails.buyerId,
+        title: 'Order Delivered',
+        message: `Order Delivered! Your order #${orderDetails.orderNumber} has been delivered successfully.`,
+        type: 'ORDER_DELIVERED',
+        data: { orderId: orderDetails.id, role: 'BUYER' },
+      });
+
+      // notification for seller
+      await notificationService.createNotification({
+        recipient: orderDetails.sellerId,
+        title: 'Order Completed',
+        message: `Order Completed! Order #${orderDetails.orderNumber} has been delivered.`,
+        type: 'ORDER_COMPLETED',
+        data: { orderId: orderDetails.id, role: 'SELLER' },
+      });
     }
     return {
       success: true,

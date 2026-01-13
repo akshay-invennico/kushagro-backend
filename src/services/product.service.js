@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
-const { Product } = require('../models');
+const { Product, User } = require('../models');
 const ApiError = require('../utils/ApiError');
+const notificationService = require('./notification.service');
 
 /**
  * Create a product
@@ -13,7 +14,22 @@ const createProduct = async (productBody) => {
   if (product) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Product with this name already exists');
   }
-  return Product.create(productBody);
+
+  const newProduct = await Product.create(productBody);
+
+  // notification for admin
+  const admins = await User.find({ role: 'ADMIN' });
+  for (const admin of admins) {
+    await notificationService.createNotification({
+      recipient: admin.id,
+      title: 'New Listing Added',
+      message: `New Listing Added! Seller ${newProduct.sellerId} added a new product ${newProduct.name}.`,
+      type: 'PRODUCT_CREATED',
+      data: { productId: newProduct.id, role: 'ADMIN' },
+    });
+  }
+
+  return newProduct;
 };
 
 const queryProducts = async (filter, options) => {
@@ -83,12 +99,20 @@ const getProductBySellerId = async (sellerId) => {
  * @returns {Promise<Product>}
  */
 const updateProductById = async (productId, updateBody) => {
-  const product = await getProductById(productId);
+  const product = await Product.findByIdAndUpdate(
+    productId,
+    { $set: updateBody },
+    {
+      new: true,
+      runValidators: true,
+    }
+  )
+    .populate('sellerId', 'name email')
+    .populate('categoryId', 'name slug');
+
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  Object.assign(product, updateBody);
-  await product.save();
   return product;
 };
 
