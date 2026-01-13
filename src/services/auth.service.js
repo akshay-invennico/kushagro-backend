@@ -7,6 +7,7 @@ const { tokenTypes } = require('../config/tokens');
 const { generateOtp } = require('../utils/generateOtp');
 const emailService = require('./email.service');
 const smsService = require('./sms.service');
+const notificationService = require('./notification.service');
 
 /**
  * Login with username and password
@@ -220,6 +221,18 @@ const completeRegistration = async (userId, body) => {
   }
 
   const updatedUser = await userService.updateUserById(user.id, updatePayload);
+
+  // notification for admin
+  const admins = await userService.queryUsers({ role: 'ADMIN' }, { limit: 100 });
+  for (const admin of admins.results) {
+    await notificationService.createNotification({
+      recipient: admin.id,
+      title: 'New User Registered',
+      message: `New user registered! ${updatedUser.name} has joined as a ${updatedUser.role}.`,
+      type: 'USER_REGISTERED',
+      data: { userId: updatedUser.id, role: 'ADMIN' },
+    });
+  }
 
   return updatedUser;
 };
