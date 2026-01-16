@@ -7,6 +7,8 @@ const createOrder = {
     productId: Joi.string().custom(objectId).required(),
     buyerId: Joi.string().custom(objectId).required(),
     unit: Joi.string().required(),
+    note: Joi.string().required(),
+    price: Joi.string().required(),
   }),
 };
 
@@ -41,6 +43,14 @@ const verifyOtpUpdateOrder = {
   }),
 };
 
+const cancelOrder = {
+  body: Joi.object({
+    orderId: Joi.string().custom(objectId).required(),
+    cancellationReason: Joi.string().required(),
+    note: Joi.string().required(),
+  }),
+};
+
 module.exports = {
   createOrder,
   getAllOrders,
@@ -48,4 +58,5 @@ module.exports = {
   updateOrder,
   sendOtpToBuyer,
   verifyOtpUpdateOrder,
+  cancelOrder,
 };

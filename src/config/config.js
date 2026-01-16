@@ -65,7 +65,9 @@ module.exports = {
     },
   },
   payment: {
-    paystackSecretKey: envVars.PAYSTACK_SECRET_KEY,
+    flutterwaveSecretKey: envVars.FLUTTERWAVE_SECRET,
+    flutterwaveSecretHash: envVars.FLUTTERWAVE_SECRET_HASH,
+    flutterwaveWebhokUrl: envVars.FLUTTERWAVE_WEBHOOK_URL,
   },
   order: {
     tax: envVars.ADMIN_TAX,

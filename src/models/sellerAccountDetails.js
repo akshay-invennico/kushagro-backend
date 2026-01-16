@@ -3,7 +3,7 @@ const validator = require('validator');
 
 const SellerAccountSchema = mongoose.Schema(
   {
-    seller_Id: {
+    sellerId: {
       type: mongoose.Types.ObjectId,
       required: true,
       ref: 'User',
@@ -11,6 +11,12 @@ const SellerAccountSchema = mongoose.Schema(
     country: {
       type: String,
       required: true,
+    },
+    currency: {
+      type: String,
+      required: true,
+      enum: ['NGN', 'GHS', 'KES', 'UGX', 'TZS', 'ZAR', 'XAF', 'XOF', 'ZMW', 'RWF', 'USD', 'EUR', 'GBP'],
+      default: 'UGX',
     },
     email: {
       type: String,
@@ -49,10 +55,9 @@ const SellerAccountSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    subaccount_code: {
+    fullAccountNumber: {
       type: String,
       required: true,
-      unique: true,
     },
     recipient_code: {
       type: String,
@@ -69,4 +74,5 @@ const SellerAccountSchema = mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('SellerAccountDetails', SellerAccountSchema);
+const SellerAccountDetails = mongoose.model('SellerAccountDetails', SellerAccountSchema);
+module.exports = SellerAccountDetails;

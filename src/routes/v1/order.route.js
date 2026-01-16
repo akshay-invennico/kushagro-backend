@@ -10,6 +10,7 @@ const {
   updateOrder,
   sendOrderOtp,
   verifyOrderOtp,
+  cancelOrder,
 } = require('../../controllers/order.controller');
 
 const router = express.Router();
@@ -19,7 +20,8 @@ router.get('/allorders', auth(), validate(orderValidation.getAllOrders), getOrde
 router.get('/:orderId', validate(orderValidation.getOrderById), getorderById);
 router.patch('/update', validate(orderValidation.updateOrder), updateOrder);
 router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
-router.get('/verify/otp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
+router.post('/verify/otp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
+router.patch('/cancel', validate(orderValidation.cancelOrder), cancelOrder);
 
 module.exports = router;
 

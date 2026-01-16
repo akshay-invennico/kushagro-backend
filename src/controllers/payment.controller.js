@@ -2,23 +2,6 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const paymentService = require('../services/payment.service');
 
-const testPaystackConnection = catchAsync(async (req, res) => {
-  await paymentService.testPaystackConnection();
-  res.status(httpStatus.OK).send({
-    success: true,
-    message: 'Connected to Paystack successfully',
-  });
-});
-
-const initializePayment = catchAsync(async (req, res) => {
-  const data = await paymentService.initializePayment(req.body);
-  res.status(httpStatus.OK).send({
-    success: true,
-    message: 'Payment initialized successfully',
-    data,
-  });
-});
-
 const createSellerBankAccount = catchAsync(async (req, res) => {
   const account = await paymentService.createSellerBankAccount(req.body);
   res.status(httpStatus.CREATED).send({
@@ -46,10 +29,20 @@ const refundBuyer = catchAsync(async (req, res) => {
   });
 });
 
+const getBankDetails = catchAsync(async (req, res) => {
+  const data = await paymentService.getBankDetails({
+    query: req.query,
+  });
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Bank Details fetched Successfully',
+    data,
+  });
+});
+
 module.exports = {
-  testPaystackConnection,
-  initializePayment,
   createSellerBankAccount,
   paySeller,
   refundBuyer,
+  getBankDetails,
 };

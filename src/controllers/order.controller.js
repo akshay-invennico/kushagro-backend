@@ -84,6 +84,15 @@ const verifyOrderOtp = async (req, res) => {
     });
   }
 };
+
+const cancelOrder = catchAsync(async (req, res) => {
+  const data = await orderService.cancelOrder(req.body);
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'order cancelled successfully',
+    data,
+  });
+});
 module.exports = {
   createOrder,
   getOrders,
@@ -91,4 +100,5 @@ module.exports = {
   updateOrder,
   sendOrderOtp,
   verifyOrderOtp,
+  cancelOrder,
 };

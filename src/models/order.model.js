@@ -49,7 +49,9 @@ const orderSchema = mongoose.Schema(
     },
     OTP: {
       type: Number,
-      required: true,
+    },
+    otpExpiresAt: {
+      type: Date,
     },
     note: {
       type: String,
@@ -65,6 +67,9 @@ const orderSchema = mongoose.Schema(
     productId: {
       type: Types.ObjectId,
       required: true,
+    },
+    cancellationReason: {
+      type: String,
     },
   },
   {
