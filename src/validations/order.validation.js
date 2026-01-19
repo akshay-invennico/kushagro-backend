@@ -12,17 +12,14 @@ const createOrder = {
   }),
 };
 
-const getAllOrders = {
-  query: Joi.object({
-    status: Joi.string().valid('ongoing', 'completed').required(),
-  }),
-};
+
 
 const getOrderById = {
-  query: Joi.object({
+  params: Joi.object({
     orderId: Joi.string().custom(objectId).required(),
   }),
 };
+
 
 const updateOrder = {
   body: Joi.object({
@@ -53,7 +50,6 @@ const cancelOrder = {
 
 module.exports = {
   createOrder,
-  getAllOrders,
   getOrderById,
   updateOrder,
   sendOtpToBuyer,

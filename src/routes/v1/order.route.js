@@ -16,7 +16,7 @@ const {
 const router = express.Router();
 
 router.post('/', validate(orderValidation.createOrder), createOrder);
-router.get('/allorders', auth(), validate(orderValidation.getAllOrders), getOrders);
+router.get('/allorders', auth(), getOrders);
 router.get('/:orderId', validate(orderValidation.getOrderById), getorderById);
 router.patch('/update', validate(orderValidation.updateOrder), updateOrder);
 router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
