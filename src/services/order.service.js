@@ -259,29 +259,28 @@ const verifyOtpUpdateOrder = async (payload) => {
       message: 'Payment not completed',
     };
   }
-  
+
   order.status = 'COMPLETED';
   order.OTP = null;
   order.otpExpiresAt = null;
   await order.save();
   // notification for buyer
-      await notificationService.createNotification({
-        recipient: order.buyerId,
-        title: 'Order Delivered',
-        message: `Order Delivered! Your order #${orderDetails.orderNumber} has been delivered successfully.`,
-        type: 'ORDER_DELIVERED',
-        data: { orderId: order.id, role: 'BUYER' },
-      });
+  await notificationService.createNotification({
+    recipient: order.buyerId,
+    title: 'Order Delivered',
+    message: `Order Delivered! Your order #${orderDetails.orderNumber} has been delivered successfully.`,
+    type: 'ORDER_DELIVERED',
+    data: { orderId: order.id, role: 'BUYER' },
+  });
 
-      // notification for seller
-      await notificationService.createNotification({
-        recipient: order.sellerId,
-        title: 'Order Completed',
-        message: `Order Completed! Order #${orderDetails.orderNumber} has been delivered.`,
-        type: 'ORDER_COMPLETED',
-        data: { orderId: order.id, role: 'SELLER' },
-      });
-    
+  // notification for seller
+  await notificationService.createNotification({
+    recipient: order.sellerId,
+    title: 'Order Completed',
+    message: `Order Completed! Order #${orderDetails.orderNumber} has been delivered.`,
+    type: 'ORDER_COMPLETED',
+    data: { orderId: order.id, role: 'SELLER' },
+  });
 
   return {
     success: true,
