@@ -1,7 +1,14 @@
 const httpStatus = require('http-status');
-const { User, Report } = require('../models');
+const mongoose = require('mongoose');
+const { User, Report, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
+<<<<<<< HEAD
 const Payment = require('../models/payment.model');
+=======
+const tokenService = require('./token.service');
+const smsService = require('./sms.service');
+const emailService = require('./email.service');
+>>>>>>> 35a5c02d853e965795e6c3380d1107b86513a13d
 
 /**
  * Create a user
@@ -37,7 +44,95 @@ const createUser = async (userBody) => {
  * @returns {Promise<QueryResult>}
  */
 const queryUsers = async (filter, options) => {
-  const users = await User.paginate(filter, options);
+  const { role, status, from, to, minSpent, maxSpent, ...otherFilters } = filter;
+  const mongoFilter = { ...otherFilters };
+
+  if (role) {
+    mongoFilter.role = role;
+  }
+
+  if (status && status !== 'all') {
+    if (status === 'suspended') {
+      mongoFilter.isSuspended = true;
+    } else if (status === 'active') {
+      mongoFilter.isSuspended = false;
+    }
+  }
+
+  if (from || to) {
+    mongoFilter.createdAt = {};
+    if (from) {
+      mongoFilter.createdAt.$gte = new Date(from);
+    }
+    if (to) {
+      mongoFilter.createdAt.$lte = new Date(to);
+    }
+  }
+
+  if (minSpent !== undefined || maxSpent !== undefined) {
+    const min = minSpent ? parseInt(minSpent, 10) : 0;
+    const max = maxSpent ? parseInt(maxSpent, 10) : Infinity;
+
+    const matchingStats = await Order.aggregate([
+      {
+        $match: {
+          status: { $ne: 'CANCELLED' },
+        },
+      },
+      {
+        $group: {
+          _id: '$buyerId',
+          totalSpent: { $sum: '$totalAmount' },
+        },
+      },
+      {
+        $match: {
+          totalSpent: { $gte: min, $lte: max },
+        },
+      },
+    ]);
+
+    const matchingUserIds = matchingStats.map((stat) => stat._id);
+    if (matchingUserIds.length > 0) {
+      mongoFilter._id = { $in: matchingUserIds };
+    } else {
+      mongoFilter._id = { $in: [] };
+    }
+  }
+
+  const users = await User.paginate(mongoFilter, options);
+
+  const userIds = users.results.map((user) => user.id);
+  const stats = await Order.aggregate([
+    {
+      $match: {
+        buyerId: { $in: userIds.map((id) => mongoose.Types.ObjectId(id)) },
+        status: { $ne: 'CANCELLED' },
+      },
+    },
+    {
+      $group: {
+        _id: '$buyerId',
+        totalOrders: { $sum: 1 },
+        totalSpent: { $sum: '$totalAmount' },
+      },
+    },
+  ]);
+
+  const statsMap = stats.reduce((acc, stat) => {
+    acc[stat._id.toString()] = stat;
+    return acc;
+  }, {});
+
+  users.results = users.results.map((user) => {
+    const userStats = statsMap[user.id] || { totalOrders: 0, totalSpent: 0 };
+    return {
+      ...user.toJSON(),
+      totalOrders: userStats.totalOrders,
+      totalSpent: userStats.totalSpent,
+    };
+  });
+
   return users;
 };
 
@@ -311,6 +406,55 @@ const getMyTransactions = async (userId, query) => {
 };
 
 
+/**
+ * Suspend user by id
+ * @param {ObjectId} userId
+ * @param {string} reason
+ * @returns {Promise<User>}
+ */
+const suspendUserById = async (userId, reason) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  user.isSuspended = true;
+  await user.save();
+  return user;
+};
+
+/**
+ * Reactivate user by id
+ * @param {ObjectId} userId
+ * @returns {Promise<User>}
+ */
+const reactivateUserById = async (userId) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  user.isSuspended = false;
+  await user.save();
+  return user;
+};
+
+/**
+ * Get reset password link
+ * @param {ObjectId} userId
+ * @returns {Promise<string>}
+ */
+const getResetPasswordLink = async (userId) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  const resetPasswordToken = await tokenService.generateResetPasswordToken(user.id);
+  if (user.email) {
+    await emailService.sendResetPasswordEmail(user.email, resetPasswordToken);
+  } else if (user.phone) {
+    const link = `${process.env.FRONTEND_URL}/reset-password?token=${resetPasswordToken}`;
+    await smsService.sendResetPasswordLink(user.phone, link);
+  }
+};
 
 module.exports = {
   createUser,
@@ -324,5 +468,8 @@ module.exports = {
   changePassword,
   deleteAccount,
   reportUser,
-  getMyTransactions
+  getMyTransactions,
+  suspendUserById,
+  reactivateUserById,
+  getResetPasswordLink,
 };

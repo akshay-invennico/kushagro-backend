@@ -14,6 +14,11 @@ const getUsers = {
   query: Joi.object().keys({
     name: Joi.string(),
     role: Joi.string(),
+    status: Joi.string().valid('active', 'suspended', 'all'),
+    from: Joi.date(),
+    to: Joi.date(),
+    minSpent: Joi.number(),
+    maxSpent: Joi.number(),
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
@@ -45,6 +50,7 @@ const updateUser = {
       role: Joi.forbidden(),
       isActive: Joi.forbidden(),
       isBlocked: Joi.forbidden(),
+      isSuspended: Joi.forbidden(),
       isVerified: Joi.forbidden(),
       isAccountVerified: Joi.forbidden(),
       otp: Joi.forbidden(),
@@ -85,6 +91,27 @@ const reportUser = {
   }),
 };
 
+const suspendUser = {
+  params: Joi.object().keys({
+    userId: Joi.string().custom(objectId),
+  }),
+  body: Joi.object().keys({
+    reason: Joi.string().required(),
+  }),
+};
+
+const reactivateUser = {
+  params: Joi.object().keys({
+    userId: Joi.string().custom(objectId),
+  }),
+};
+
+const getResetPasswordLink = {
+  params: Joi.object().keys({
+    userId: Joi.string().custom(objectId),
+  }),
+};
+
 module.exports = {
   createUser,
   getUsers,
@@ -94,4 +121,7 @@ module.exports = {
   changePassword,
   deleteAccount,
   reportUser,
+  suspendUser,
+  reactivateUser,
+  getResetPasswordLink,
 };
