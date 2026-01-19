@@ -122,11 +122,12 @@ const updateProductById = async (productId, updateBody) => {
  * @returns {Promise<Product>}
  */
 const deleteProductById = async (productId) => {
-  const product = await getProductById(productId);
+  const product = await Product.findByIdAndDelete(productId);
+
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  await product.remove();
+
   return product;
 };
 
