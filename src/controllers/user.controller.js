@@ -117,6 +117,13 @@ const getResetPasswordLink = catchAsync(async (req, res) => {
   });
 });
 
+const getFraudReports = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const data = await userService.getFraudReportsByUserId(userId, options);
+  res.send(data);
+});
+
 module.exports = {
   getUser,
   getUsers,
@@ -127,4 +134,5 @@ module.exports = {
   suspendUser,
   reactivateUser,
   getResetPasswordLink,
+  getFraudReports,
 };

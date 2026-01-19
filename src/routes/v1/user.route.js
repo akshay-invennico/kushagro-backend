@@ -27,6 +27,8 @@ router
   .route('/:userId/reset/link')
   .get(auth('manageUsers'), validate(userValidation.getResetPasswordLink), userController.getResetPasswordLink);
 
+router.route('/:userId/reports').get(auth('manageUsers'), userController.getFraudReports);
+
 module.exports = router;
 
 /**
