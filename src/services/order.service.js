@@ -104,7 +104,7 @@ const createOrder = async (payload) => {
     title: 'New Order Received',
     message: `New Order Received! Order #${orderNumber} has been placed.`,
     type: 'ORDER_PLACED',
-    data: { orderId: orderResponse.id, role: 'SELLER' },
+    data: { orderId: order.id, role: 'SELLER' },
   });
 
   // notification for buyer
@@ -113,7 +113,7 @@ const createOrder = async (payload) => {
     title: 'Order Placed',
     message: `Order Placed! Your order #${orderNumber} has been placed successfully.`,
     type: 'ORDER_PLACED',
-    data: { orderId: orderResponse.id, role: 'BUYER' },
+    data: { orderId: order.id, role: 'BUYER' },
   });
 
   return {
