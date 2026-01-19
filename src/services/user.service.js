@@ -2,6 +2,7 @@ const httpStatus = require('http-status');
 const mongoose = require('mongoose');
 const { User, Report, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
+const Payment = require('../models/payment.model');
 const tokenService = require('./token.service');
 const smsService = require('./sms.service');
 const emailService = require('./email.service');
@@ -271,6 +272,137 @@ const reportUser = async (reporterId, reportedId, reportBody) => {
   return report;
 };
 
+
+const getMyTransactions = async (userId, query) => {
+  const { range = 'all', page = 1, limit = 10 } = query;
+
+  const skip = (page - 1) * limit;
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const match = {
+    status: 'Payment success',
+    type: 'PayIn',
+  };
+
+  if (user.role === 'SELLER') {
+    match.sellerId = new mongoose.Types.ObjectId(userId);
+  } else {
+    match.buyerId = new mongoose.Types.ObjectId(userId);
+  }
+
+  // Date filter
+  if (range !== 'all') {
+    const fromDate = new Date();
+
+    if (range === '30') fromDate.setDate(fromDate.getDate() - 30);
+    if (range === '60') fromDate.setDate(fromDate.getDate() - 60);
+    if (range === '90') fromDate.setDate(fromDate.getDate() - 90);
+
+    match.createdAt = { $gte: fromDate };
+  }
+
+  // This week start
+  const startOfWeek = new Date();
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const pipeline = [
+    { $match: match },
+
+    {
+      $lookup: {
+        from: 'users',
+        let: {
+          otherUserId:
+            user.role === 'SELLER' ? '$buyerId' : '$sellerId',
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$_id', '$$otherUserId'] },
+            },
+          },
+          {
+            $project: {
+              name: 1,
+              profile: 1,
+            },
+          },
+        ],
+        as: 'otherUser',
+      },
+    },
+    { $unwind: '$otherUser' },
+
+    {
+      $facet: {
+        transactions: [
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              amount: { $toDouble: '$amount' },
+              currency: 1,
+              createdAt: 1,
+              reference: 1,
+              user: '$otherUser',
+            },
+          },
+        ],
+
+        totalEarnings: [
+          {
+            $group: {
+              _id: null,
+              total: { $sum: { $toDouble: '$amount' } },
+            },
+          },
+        ],
+
+        thisWeekEarnings: [
+          { $match: { createdAt: { $gte: startOfWeek } } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: { $toDouble: '$amount' } },
+            },
+          },
+        ],
+
+        count: [{ $count: 'total' }],
+      },
+    },
+  ];
+
+  const result = await Payment.aggregate(pipeline);
+
+  return {
+    totalEarnings:
+      user.role === 'SELLER'
+        ? result[0].totalEarnings[0]?.total || 0
+        : 0,
+
+    thisWeekEarnings:
+      user.role === 'SELLER'
+        ? result[0].thisWeekEarnings[0]?.total || 0
+        : 0,
+
+    transactions: result[0].transactions,
+
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total: result[0].count[0]?.total || 0,
+    },
+  };
+};
+
+
 /**
  * Suspend user by id
  * @param {ObjectId} userId
@@ -333,6 +465,7 @@ module.exports = {
   changePassword,
   deleteAccount,
   reportUser,
+  getMyTransactions,
   suspendUserById,
   reactivateUserById,
   getResetPasswordLink,

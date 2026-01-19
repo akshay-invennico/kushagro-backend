@@ -8,6 +8,7 @@ const Payment = require('../models/payment.model');
 const ApiError = require('../utils/ApiError');
 const config = require('../config/config');
 const payment = require('../config/payment');
+const mongoose = require('mongoose');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { sendVerificationEmail } = require('./email.service');
@@ -23,14 +24,15 @@ function generateOTP() {
 }
 
 const createOrder = async (payload) => {
-  const { quantity, unit, note, buyerId, productId } = payload;
+  const { buyerId, productId } = payload;
   const currency = 'UGX';
   const productDetails = await Product.findById(productId);
   if (!productDetails) throw new Error('Product not found');
 
   const { price } = productDetails;
   const { sellerId } = productDetails;
-
+   const quantity=1;
+   const unit = productDetails.extraFields.unit;
   const checkBuyer = await User.findOne({ _id: buyerId, role: 'BUYER' });
   const checkSeller = await User.findOne({ _id: sellerId, role: 'SELLER' });
   if (!checkBuyer || !checkSeller) {
@@ -266,17 +268,158 @@ const getAllOrders = async (userId, query) => {
 };
 
 
+const getOrderById = async ({ orderId }) => {
+  const pipeline = [
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(orderId),
+      },
+    },
 
-const getorderById = async (payload) => {
-  const { orderId } = payload;
-  const orderDetails = await Order.findById(orderId);
-  if (!orderDetails) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'order not found');
+    /** Payment (latest successful PayIn) */
+    {
+      $lookup: {
+        from: 'payments',
+        let: { orderId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$orderId', '$$orderId'] },
+                  { $eq: ['$type', 'PayIn'] },
+                  { $eq: ['$status', 'Payment success'] },
+                ],
+              },
+            },
+          },
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+          {
+            $project: {
+              reference: 1,
+              status: 1,
+              amount: 1,
+              currency: 1,
+              createdAt: 1,
+              transactionId: '$authorization_Id.transactionId',
+              flw_ref: '$authorization_Id.flw_ref',
+            },
+          },
+        ],
+        as: 'payment',
+      },
+    },
+    { $unwind: { path: '$payment', preserveNullAndEmptyArrays: true } },
+
+    /** Buyer */
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'buyerId',
+        foreignField: '_id',
+        as: 'buyer',
+      },
+    },
+    { $unwind: { path: '$buyer', preserveNullAndEmptyArrays: true } },
+
+    /** Seller */
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'sellerId',
+        foreignField: '_id',
+        as: 'seller',
+      },
+    },
+    { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
+
+    /** Product */
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product',
+      },
+    },
+    { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+
+    /** Category */
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'product.categoryId',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+
+    /** Final Shape */
+    {
+      $project: {
+        _id: 1,
+        orderNumber: 1,
+        status: 1,
+        quantity: 1,
+        unit: 1,
+        price: 1,
+        subTotal: 1,
+        tax: 1,
+        platformCharges: 1,
+        totalAmount: 1,
+        paybleAmount: 1,
+        createdAt: 1,
+
+        payment: {
+          reference: 1,
+          status: 1,
+          amount: 1,
+          currency: 1,
+          transactionId: 1,
+          flw_ref: 1,
+          createdAt: 1,
+        },
+
+        buyer: {
+          _id: '$buyer._id',
+          name: '$buyer.name',
+          email: '$buyer.email',
+          phone: '$buyer.phone',
+        },
+
+        seller: {
+          _id: '$seller._id',
+          name: '$seller.name',
+          email: '$seller.email',
+        },
+
+        product: {
+          _id: '$product._id',
+          name: '$product.name',
+          price: '$product.price',
+          images: '$product.images',
+          extraFields: '$product.extraFields',
+        },
+
+        category: {
+          _id: '$category._id',
+          name: '$category.name',
+        },
+      },
+    },
+  ];
+
+  const result = await Order.aggregate(pipeline);
+
+  if (!result.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   }
-  return {
-    orderDetails,
-  };
+
+  return result[0];
 };
+
 
 const updateOrder = async (payload) => {
   const { orderIds } = payload;
@@ -513,12 +656,85 @@ const cancelOrder = async (payload) => {
   };
 };
 
+const flagOrders = async ({ orderIds, reason, note }) => {
+  const ids = Array.isArray(orderIds) ? orderIds : [orderIds];
+
+  const orders = await Order.find({
+    _id: { $in: ids },
+  });
+
+  if (!orders.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Orders not found');
+  }
+
+  const alreadyFlagged = orders.filter(o => o.isFlagged);
+  if (alreadyFlagged.length) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Some orders are already flagged`
+    );
+  }
+
+  await Order.updateMany(
+    { _id: { $in: ids } },
+    {
+      $set: {
+        isFlagged: true,
+        flag: {
+          reason,
+          note,
+          status: 'OPEN',
+          flaggedAt: new Date(),
+        },
+      },
+    }
+  );
+
+  return {
+    flaggedCount: ids.length,
+    orderIds: ids,
+  };
+};
+
+
+const resolveFlags = async ({ orderIds }) => {
+  const ids = Array.isArray(orderIds) ? orderIds : [orderIds];
+
+  const result = await Order.updateMany(
+    {
+      _id: { $in: ids },
+      isFlagged: true,
+    },
+    {
+      $set: {
+        isFlagged: false,
+        'flag.status': 'RESOLVED',
+        'flag.resolvedAt': new Date(),
+      },
+    }
+  );
+
+  if (!result.modifiedCount) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'No flagged orders found');
+  }
+
+  return {
+    resolvedCount: result.modifiedCount,
+    orderIds: ids,
+  };
+};
+
+
+
+
 module.exports = {
   createOrder,
   getAllOrders,
-  getorderById,
+  getOrderById,
   updateOrder,
   sendOtpToBuyer,
   verifyOtpUpdateOrder,
   cancelOrder,
+  flagOrders,
+  resolveFlags
 };

@@ -1,6 +1,30 @@
 const mongoose = require('mongoose');
-
 const { Types } = mongoose;
+
+const flagSchema = new mongoose.Schema(
+  {
+    reason: {
+      type: String,
+      required: true,
+    },
+    note: {
+      type: String,
+    },
+    status: {
+      type: String,
+      enum: ['OPEN', 'RESOLVED'],
+      default: 'OPEN',
+    },
+    flaggedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    resolvedAt: {
+      type: Date,
+    },
+  },
+  { _id: false }
+);
 
 const orderSchema = mongoose.Schema(
   {
@@ -56,18 +80,34 @@ const orderSchema = mongoose.Schema(
     note: {
       type: String,
     },
+
     buyerId: {
       type: Types.ObjectId,
       required: true,
+      ref: 'User',
     },
     sellerId: {
       type: Types.ObjectId,
       required: true,
+      ref: 'User',
     },
     productId: {
       type: Types.ObjectId,
       required: true,
+      ref: 'Product',
     },
+
+    // 🔴 FLAG SECTION (ADMIN ONLY)
+    isFlagged: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    flag: {
+      type: flagSchema,
+      default: null,
+    },
+
     cancellationReason: {
       type: String,
     },
@@ -78,5 +118,4 @@ const orderSchema = mongoose.Schema(
 );
 
 const Order = mongoose.model('Order', orderSchema);
-
 module.exports = Order;

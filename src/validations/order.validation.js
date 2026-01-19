@@ -3,12 +3,8 @@ const { objectId } = require('./custom.validation');
 
 const createOrder = {
   body: Joi.object().keys({
-    quantity: Joi.number().required().min(0),
     productId: Joi.string().custom(objectId).required(),
     buyerId: Joi.string().custom(objectId).required(),
-    unit: Joi.string().required(),
-    note: Joi.string().required(),
-    price: Joi.string().required(),
   }),
 };
 
