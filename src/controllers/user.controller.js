@@ -72,10 +72,25 @@ const reportUser = catchAsync(async (req, res) => {
   });
 });
 
+const getMyTransactions = async (req, res) => {
+  const userId = req.user._id;
+
+  const data = await transactionService.getMyTransactions(
+    userId,
+    req.query
+  );
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+};
+
 module.exports = {
   getUser,
   updateUser,
   changePassword,
   deleteAccount,
   reportUser,
+  getMyTransactions
 };

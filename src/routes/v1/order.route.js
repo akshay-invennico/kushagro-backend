@@ -11,6 +11,8 @@ const {
   sendOrderOtp,
   verifyOrderOtp,
   cancelOrder,
+  flagOrders,
+  resolveOrderFlags
 } = require('../../controllers/order.controller');
 
 const router = express.Router();
@@ -22,6 +24,8 @@ router.patch('/update', validate(orderValidation.updateOrder), updateOrder);
 router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
 router.post('/verify/otp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
 router.patch('/cancel', validate(orderValidation.cancelOrder), cancelOrder);
+router.patch('/markflag',flagOrders);
+router.patch('/resolveflag',resolveOrderFlags);
 
 module.exports = router;
 
