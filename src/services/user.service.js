@@ -2,13 +2,10 @@ const httpStatus = require('http-status');
 const mongoose = require('mongoose');
 const { User, Report, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
-<<<<<<< HEAD
 const Payment = require('../models/payment.model');
-=======
 const tokenService = require('./token.service');
 const smsService = require('./sms.service');
 const emailService = require('./email.service');
->>>>>>> 35a5c02d853e965795e6c3380d1107b86513a13d
 
 /**
  * Create a user
