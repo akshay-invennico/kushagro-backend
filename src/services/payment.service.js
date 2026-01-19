@@ -93,8 +93,8 @@ const paySeller = async (payload) => {
 
   const { buyerId } = order;
 
-  if (order.status !== 'PAID') {
-    throw new Error('Order must be PAID before payout');
+  if (order.status !== 'COMPLETED') {
+    throw new Error('Order must be COMPLETED before payout');
   }
 
   const existingPayout = await Payment.findOne({

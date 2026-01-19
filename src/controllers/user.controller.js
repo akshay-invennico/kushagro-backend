@@ -73,6 +73,19 @@ const reportUser = catchAsync(async (req, res) => {
   });
 });
 
+const getMyTransactions = async (req, res) => {
+  const userId = req.user._id;
+
+  const data = await transactionService.getMyTransactions(
+    userId,
+    req.query
+  );
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+};
 const getUsers = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['name', 'role', 'status', 'from', 'to', 'minSpent', 'maxSpent']);
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
@@ -131,6 +144,7 @@ module.exports = {
   changePassword,
   deleteAccount,
   reportUser,
+  getMyTransactions,
   suspendUser,
   reactivateUser,
   getResetPasswordLink,

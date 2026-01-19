@@ -14,18 +14,26 @@ const createOrder = catchAsync(async (req, res) => {
 const getOrders = async (req, res) => {
   const userId = req.user._id;
 
-  const { orders, pagination } = await orderService.getAllOrders(userId, req.query);
+  const { orders, pagination } =
+    await orderService.getAllOrders(userId, req.query);
 
   res.status(httpStatus.OK).json({
     success: true,
-    count: orders.length,
-    ...pagination,
+    message: 'Orders fetched successfully',
     data: orders,
+    meta: {
+      count: orders.length,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: pagination.totalPages,
+      totalResults: pagination.total,
+    },
+    error: null,
   });
 };
 
 const getorderById = catchAsync(async (req, res) => {
-  const data = await orderService.getorderById(req.params.orderId);
+  const data = await orderService.getOrderById(req.params.orderId);
   if (!data) {
     res.status(httpStatus.NOT_FOUND).send({
       success: false,
@@ -95,6 +103,33 @@ const cancelOrder = catchAsync(async (req, res) => {
     data,
   });
 });
+
+const flagOrders = catchAsync(async (req, res) => {
+  const { orderIds, reason, note } = req.body;
+
+  const result = await orderService.flagOrders({
+    orderIds,
+    reason,
+    note,
+  });
+
+  res.status(httpStatus.OK).send({
+    message: 'Order(s) flagged successfully',
+    ...result,
+  });
+});
+
+const resolveOrderFlags = catchAsync(async (req, res) => {
+  const { orderIds } = req.body;
+
+  const result = await orderService.resolveFlags({ orderIds });
+
+  res.status(httpStatus.OK).send({
+    message: 'Order flag(s) resolved successfully',
+    ...result,
+  });
+});
+
 module.exports = {
   createOrder,
   getOrders,
@@ -103,4 +138,6 @@ module.exports = {
   sendOrderOtp,
   verifyOrderOtp,
   cancelOrder,
+  flagOrders,
+  resolveOrderFlags
 };
