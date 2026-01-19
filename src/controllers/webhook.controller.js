@@ -1,26 +1,32 @@
-const crypto = require('crypto');
 const dotenv = require('dotenv');
 const path = require('path');
-const { processWebhook } = require('../services/webhook.service');
+const { processpaymentWebhook } = require('../services/webhook.service');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const handlePaystackWebhook = async (req, res) => {
-  const secret = process.env.PAYSTACK_SECRET_KEY;
+const handleFlutterwaveWebhook = async (req, res) => {
+  try {
+    const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
+    const signature = req.headers['verif-hash'];
 
-  const hash = crypto.createHmac('sha512', secret).update(req.body).digest('hex');
+    if (!secretHash) {
+      return res.status(500).json({ error: 'Webhook config error' });
+    }
 
-  const signature = req.headers['x-paystack-signature'];
+    if (!signature) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-  if (!signature || hash !== signature) {
-    return res.sendStatus(401);
+    if (signature !== secretHash) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    await processpaymentWebhook(req.body);
+
+    return res.status(200).json({ status: 'success' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Webhook processing failed' });
   }
-
-  const payload = JSON.parse(req.body.toString());
-
-  await processWebhook(payload);
-
-  return res.sendStatus(200);
 };
 
-module.exports = { handlePaystackWebhook };
+module.exports = { handleFlutterwaveWebhook };

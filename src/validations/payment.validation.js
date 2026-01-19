@@ -50,6 +50,7 @@ const createSellerBankAccount = {
 
     phone: Joi.string().trim().required(),
     email: Joi.string().email().required(),
+    currency: Joi.string().trim().required(),
   }),
 };
 
@@ -69,12 +70,19 @@ const paySeller = {
 const refundBuyer = {
   body: Joi.object({
     orderId: Joi.string().custom(objectId).required(),
-    reference: Joi.string().trim().required(),
-
-    buyerId: Joi.string().custom(objectId).required(),
-    sellerId: Joi.string().custom(objectId).required(),
-
     reason: Joi.string().trim().allow('', null),
+  }),
+};
+
+/**
+ * BANK DETAILS
+ */
+const getBankDetails = {
+  query: Joi.object({
+    country: Joi.string().trim().required().length(2).uppercase().messages({
+      'any.required': 'Country code is required',
+      'string.length': 'Country code must be a 2-letter ISO code (e.g. NG, UG)',
+    }),
   }),
 };
 
@@ -83,4 +91,5 @@ module.exports = {
   createSellerBankAccount,
   paySeller,
   refundBuyer,
+  getBankDetails,
 };

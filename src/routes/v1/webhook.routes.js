@@ -1,9 +1,9 @@
 const express = require('express');
 
-const { handlePaystackWebhook } = require('../../controllers/webhook.controller');
+const { handleFlutterwaveWebhook } = require('../../controllers/webhook.controller');
 
 const router = express.Router();
 
-router.post('/', handlePaystackWebhook);
+router.post('/', handleFlutterwaveWebhook);
 
 module.exports = router;
