@@ -14,13 +14,21 @@ const createOrder = catchAsync(async (req, res) => {
 const getOrders = async (req, res) => {
   const userId = req.user._id;
 
-  const { orders, pagination } = await orderService.getAllOrders(userId, req.query);
+  const { orders, pagination } =
+    await orderService.getAllOrders(userId, req.query);
 
   res.status(httpStatus.OK).json({
     success: true,
-    count: orders.length,
-    ...pagination,
+    message: 'Orders fetched successfully',
     data: orders,
+    meta: {
+      count: orders.length,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: pagination.totalPages,
+      totalResults: pagination.total,
+    },
+    error: null,
   });
 };
 
