@@ -12,14 +12,11 @@ const createOrder = {
   }),
 };
 
-
-
 const getOrderById = {
   params: Joi.object({
     orderId: Joi.string().custom(objectId).required(),
   }),
 };
-
 
 const updateOrder = {
   body: Joi.object({

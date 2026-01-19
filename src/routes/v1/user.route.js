@@ -6,7 +6,8 @@ const userController = require('../../controllers/user.controller');
 
 const router = express.Router();
 
-router.route('/').get(auth('getUsers'), validate(userValidation.getUser), userController.getUser);
+router.route('/').get(auth('getUser'), validate(userValidation.getUser), userController.getUser);
+router.route('/all').get(auth('getUsers'), validate(userValidation.getUsers), userController.getUsers);
 router.route('/:userId').patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser);
 router
   .route('/change/password')
@@ -15,6 +16,16 @@ router
   .route('/delete/account')
   .patch(auth('manageUsers'), validate(userValidation.deleteAccount), userController.deleteAccount);
 router.route('/report/:userId').post(auth('manageUsers'), validate(userValidation.reportUser), userController.reportUser);
+
+router.route('/:userId/suspend').post(auth('manageUsers'), validate(userValidation.suspendUser), userController.suspendUser);
+
+router
+  .route('/:userId/reactivate')
+  .post(auth('manageUsers'), validate(userValidation.reactivateUser), userController.reactivateUser);
+
+router
+  .route('/:userId/reset/link')
+  .get(auth('manageUsers'), validate(userValidation.getResetPasswordLink), userController.getResetPasswordLink);
 
 module.exports = router;
 

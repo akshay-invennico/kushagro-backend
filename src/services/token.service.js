@@ -1,10 +1,7 @@
 const jwt = require('jsonwebtoken');
 const moment = require('moment');
-const httpStatus = require('http-status');
 const config = require('../config/config');
-const userService = require('./user.service');
 const { Token } = require('../models');
-const ApiError = require('../utils/ApiError');
 const { tokenTypes } = require('../config/tokens');
 
 /**
@@ -113,17 +110,13 @@ const generateTemporaryAuthTokens = async (user) => {
 
 /**
  * Generate reset password token
- * @param {string} email
+ * @param {ObjectId} userId
  * @returns {Promise<string>}
  */
-const generateResetPasswordToken = async (email) => {
-  const user = await userService.getUserByEmail(email);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'No users found with this email');
-  }
+const generateResetPasswordToken = async (userId) => {
   const expires = moment().add(config.jwt.resetPasswordExpirationMinutes, 'minutes');
-  const resetPasswordToken = generateToken(user.id, expires, tokenTypes.RESET_PASSWORD);
-  await saveToken(resetPasswordToken, user.id, expires, tokenTypes.RESET_PASSWORD);
+  const resetPasswordToken = generateToken(userId, expires, tokenTypes.RESET_PASSWORD);
+  await saveToken(resetPasswordToken, userId, expires, tokenTypes.RESET_PASSWORD);
   return resetPasswordToken;
 };
 

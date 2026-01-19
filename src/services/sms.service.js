@@ -18,4 +18,12 @@ const sendResetPasswordSms = async (phone, otp) => {
   });
 };
 
-module.exports = { sendOtpSms, sendResetPasswordSms };
+const sendResetPasswordLink = async (phone, link) => {
+  return client.messages.create({
+    body: `Your reset password link is ${link}. Valid for 15 minutes.`,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to: phone,
+  });
+};
+
+module.exports = { sendOtpSms, sendResetPasswordSms, sendResetPasswordLink };

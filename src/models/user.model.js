@@ -112,6 +112,11 @@ const userSchema = mongoose.Schema(
       default: false,
     },
 
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+
     isReported: {
       type: Boolean,
       default: false,
