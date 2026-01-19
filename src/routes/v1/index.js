@@ -7,6 +7,9 @@ const paymentRoute = require('./payment.route');
 const orderRoute = require('./order.route');
 const categoryRoute = require('./category.route');
 const productRoute = require('./product.route');
+const ticketRoute = require('./ticket.route');
+const ratingRoute = require('./rating.route');
+const notificationRoute = require('./notification.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -39,6 +42,18 @@ const defaultRoutes = [
   {
     path: '/product',
     route: productRoute,
+  },
+  {
+    path: '/ticket',
+    route: ticketRoute,
+  },
+  {
+    path: '/rating',
+    route: ratingRoute,
+  },
+  {
+    path: '/notification',
+    route: notificationRoute,
   },
 ];
 

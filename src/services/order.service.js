@@ -12,6 +12,7 @@ const payment = require('../config/payment');
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { sendVerificationEmail } = require('./email.service');
 const { sendOtpSms } = require('./sms.service');
+const notificationService = require('./notification.service');
 
 function generateOrderNumber() {
   return Math.floor(100000 + Math.random() * 900000);
@@ -95,6 +96,23 @@ const createOrder = async (payload) => {
     amount: payableAmount.toString(),
     currency,
     date: new Date().toISOString(),
+  });
+  // notification for seller
+  await notificationService.createNotification({
+    recipient: sellerId,
+    title: 'New Order Received',
+    message: `New Order Received! Order #${orderNumber} has been placed.`,
+    type: 'ORDER_PLACED',
+    data: { orderId: orderResponse.id, role: 'SELLER' },
+  });
+
+  // notification for buyer
+  await notificationService.createNotification({
+    recipient: buyerId,
+    title: 'Order Placed',
+    message: `Order Placed! Your order #${orderNumber} has been placed successfully.`,
+    type: 'ORDER_PLACED',
+    data: { orderId: orderResponse.id, role: 'BUYER' },
   });
 
   return {
@@ -203,12 +221,36 @@ const sendOtpToBuyer = async (payload) => {
 const verifyOtpUpdateOrder = async (payload) => {
   const { orderId, otp } = payload;
 
+<<<<<<< HEAD
   const order = await Order.findById(orderId);
   if (!order) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
   if (!order.OTP || !order.otpExpiresAt) {
+=======
+    if (successfulPayments) {
+      await Order.findByIdAndUpdate({ _id: orderId }, { $set: { status: 'COMPLETED' } });
+
+      // notification for buyer
+      await notificationService.createNotification({
+        recipient: orderDetails.buyerId,
+        title: 'Order Delivered',
+        message: `Order Delivered! Your order #${orderDetails.orderNumber} has been delivered successfully.`,
+        type: 'ORDER_DELIVERED',
+        data: { orderId: orderDetails.id, role: 'BUYER' },
+      });
+
+      // notification for seller
+      await notificationService.createNotification({
+        recipient: orderDetails.sellerId,
+        title: 'Order Completed',
+        message: `Order Completed! Order #${orderDetails.orderNumber} has been delivered.`,
+        type: 'ORDER_COMPLETED',
+        data: { orderId: orderDetails.id, role: 'SELLER' },
+      });
+    }
+>>>>>>> 5ffdc2084b984233609a7f0043b667ba6e49a117
     return {
       success: false,
       message: 'OTP not generated or already used',

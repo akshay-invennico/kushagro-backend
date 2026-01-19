@@ -76,7 +76,42 @@ const getCategoryWithFields = async (categoryId) => {
 };
 
 const getAllCategories = async () => {
-  return Category.find().sort({ createdAt: -1 });
+  return Category.aggregate([
+    {
+      $lookup: {
+        from: 'products',
+        let: { categoryId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [{ $eq: ['$categoryId', '$$categoryId'] }, { $eq: ['$status', 'ACTIVE'] }],
+              },
+            },
+          },
+          {
+            $count: 'count',
+          },
+        ],
+        as: 'products',
+      },
+    },
+    {
+      $addFields: {
+        productCount: {
+          $ifNull: [{ $arrayElemAt: ['$products.count', 0] }, 0],
+        },
+      },
+    },
+    {
+      $project: {
+        products: 0,
+      },
+    },
+    {
+      $sort: { createdAt: -1 },
+    },
+  ]);
 };
 
 const deleteCategory = async (categoryId) => {
@@ -84,6 +119,11 @@ const deleteCategory = async (categoryId) => {
   if (!category) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
   }
+
+  if (category.status === 'ACTIVE') {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Category is active, Kindly inactive first');
+  }
+
   await category.remove();
   await CategoryField.deleteMany({ categoryId });
   return category;

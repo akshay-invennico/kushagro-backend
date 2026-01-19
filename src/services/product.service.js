@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
-const { Product } = require('../models');
+const { Product, User } = require('../models');
 const ApiError = require('../utils/ApiError');
+const notificationService = require('./notification.service');
 
 /**
  * Create a product
@@ -13,21 +14,64 @@ const createProduct = async (productBody) => {
   if (product) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Product with this name already exists');
   }
-  return Product.create(productBody);
+
+  const newProduct = await Product.create(productBody);
+
+  // notification for admin
+  const admins = await User.find({ role: 'ADMIN' });
+  for (const admin of admins) {
+    await notificationService.createNotification({
+      recipient: admin.id,
+      title: 'New Listing Added',
+      message: `New Listing Added! Seller ${newProduct.sellerId} added a new product ${newProduct.name}.`,
+      type: 'PRODUCT_CREATED',
+      data: { productId: newProduct.id, role: 'ADMIN' },
+    });
+  }
+
+  return newProduct;
 };
 
-/**
- * Query for products
- * @param {Object} filter
- * @param {Object} options
- * @param {string} [options.sortBy]
- * @param {number} [options.limit]
- * @param {number} [options.page]
- * @returns {Promise<QueryResult>}
- */
 const queryProducts = async (filter, options) => {
-  const products = await Product.paginate(filter, options);
-  return products;
+  const limit = options.limit ? parseInt(options.limit, 10) : 10;
+  const page = options.page ? parseInt(options.page, 10) : 1;
+  const skip = (page - 1) * limit;
+
+  let sort = { createdAt: -1 };
+  if (options.sortBy) {
+    sort = {};
+    options.sortBy.split(',').forEach((sortOption) => {
+      const [key, order] = sortOption.split(':');
+      sort[key] = order === 'desc' ? -1 : 1;
+    });
+  }
+
+  const [totalResults, results] = await Promise.all([
+    Product.countDocuments(filter),
+    Product.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: 'sellerId',
+        select: '_id name profile email phone',
+      })
+      .populate({
+        path: 'categoryId',
+        select: '_id name slug',
+      })
+      .lean(),
+  ]);
+
+  const totalPages = Math.ceil(totalResults / limit);
+
+  return {
+    results,
+    page,
+    limit,
+    totalPages,
+    totalResults,
+  };
 };
 
 /**
@@ -36,7 +80,7 @@ const queryProducts = async (filter, options) => {
  * @returns {Promise<Product>}
  */
 const getProductById = async (id) => {
-  return Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug');
+  return Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug').lean();
 };
 
 /**
@@ -55,12 +99,20 @@ const getProductBySellerId = async (sellerId) => {
  * @returns {Promise<Product>}
  */
 const updateProductById = async (productId, updateBody) => {
-  const product = await getProductById(productId);
+  const product = await Product.findByIdAndUpdate(
+    productId,
+    { $set: updateBody },
+    {
+      new: true,
+      runValidators: true,
+    }
+  )
+    .populate('sellerId', 'name email')
+    .populate('categoryId', 'name slug');
+
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  Object.assign(product, updateBody);
-  await product.save();
   return product;
 };
 
@@ -70,11 +122,12 @@ const updateProductById = async (productId, updateBody) => {
  * @returns {Promise<Product>}
  */
 const deleteProductById = async (productId) => {
-  const product = await getProductById(productId);
+  const product = await Product.findByIdAndDelete(productId);
+
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  await product.remove();
+
   return product;
 };
 
