@@ -123,33 +123,149 @@ const createOrder = async (payload) => {
 };
 
 const getAllOrders = async (userId, query) => {
-  const { status } = query;
-  const statusMap = {
+  const {
+    orderStatus,
+    paymentStatus,
+    category,
+    sort = 'newest',
+    fromDate,
+    toDate,
+    amountFrom,
+    amountTo,
+  } = query;
+
+  const page = Math.max(parseInt(query.page) || 1, 1);
+  const limit = Math.max(parseInt(query.limit) || 10, 1);
+  const skip = (page - 1) * limit;
+
+  const orderStatusMap = {
     ongoing: 'PENDING',
+    paid: 'PAID',
     completed: 'COMPLETED',
+    cancelled: 'CANCELLED',
   };
 
-  if (!statusMap[status]) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid status');
-  }
+  const paymentStatusMap = {
+    paid: 'Payment success',
+    pending: 'Pending',
+    refunded: 'Refund completed',
+  };
 
   const user = await User.findById(userId);
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const filter = { status: statusMap[status] };
+  const orderMatch = {};
 
-  if (user.role === 'SELLER') {
-    filter.sellerId = userId;
-  } else if (user.role === 'BUYER') {
-    filter.buyerId = userId;
-  } else if (user.role !== 'ADMIN') {
+  if (orderStatus && orderStatus !== 'all') {
+    if (!orderStatusMap[orderStatus]) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid order status');
+    }
+    orderMatch.status = orderStatusMap[orderStatus];
+  }
+
+  if (user.role === 'SELLER') orderMatch.sellerId = userId;
+  else if (user.role === 'BUYER') orderMatch.buyerId = userId;
+  else if (user.role !== 'ADMIN') {
     throw new ApiError(httpStatus.FORBIDDEN, 'Unauthorized role');
   }
 
-  return Order.find(filter).sort({ createdAt: -1 });
+  if (amountFrom || amountTo) {
+    orderMatch.totalAmount = {};
+    if (amountFrom) orderMatch.totalAmount.$gte = Number(amountFrom);
+    if (amountTo) orderMatch.totalAmount.$lte = Number(amountTo);
+  }
+
+  if (fromDate || toDate) {
+    orderMatch.createdAt = {};
+    if (fromDate) orderMatch.createdAt.$gte = new Date(fromDate);
+    if (toDate) orderMatch.createdAt.$lte = new Date(toDate);
+  }
+
+  const pipeline = [
+    { $match: orderMatch },
+
+    {
+      $lookup: {
+        from: 'payments',
+        localField: '_id',
+        foreignField: 'orderId',
+        as: 'payments',
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product',
+      },
+    },
+    { $unwind: '$product' },
+
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'product.categoryId',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    { $unwind: '$category' },
+  ];
+
+  if (category && category !== 'All') {
+    pipeline.push({
+      $match: { 'category.name': category },
+    });
+  }
+
+  if (paymentStatus && paymentStatus !== 'all') {
+    if (!paymentStatusMap[paymentStatus]) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid payment status');
+    }
+
+    pipeline.push({
+      $match: {
+        payments: {
+          $elemMatch: {
+            status: paymentStatusMap[paymentStatus],
+          },
+        },
+      },
+    });
+  }
+
+  pipeline.push({
+    $facet: {
+      data: [
+        { $sort: sort === 'older' ? { createdAt: 1 } : { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ],
+      total: [{ $count: 'count' }],
+    },
+  });
+
+  const result = await Order.aggregate(pipeline);
+
+  const orders = result[0].data;
+  const total = result[0].total[0]?.count || 0;
+
+  return {
+    orders,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
+
+
 
 const getorderById = async (payload) => {
   const { orderId } = payload;

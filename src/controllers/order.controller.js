@@ -13,11 +13,14 @@ const createOrder = catchAsync(async (req, res) => {
 
 const getOrders = async (req, res) => {
   const userId = req.user._id;
-  const orders = await orderService.getAllOrders(userId, req.query);
+
+  const { orders, pagination } =
+    await orderService.getAllOrders(userId, req.query);
 
   res.status(httpStatus.OK).json({
     success: true,
     count: orders.length,
+    ...pagination,
     data: orders,
   });
 };
