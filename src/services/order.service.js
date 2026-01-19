@@ -52,7 +52,6 @@ const createOrder = async (payload) => {
     quantity,
     unit,
     price,
-    note,
     subTotal,
     tax: taxAmount,
     platformCharges,
