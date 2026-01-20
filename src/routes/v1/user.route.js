@@ -30,6 +30,7 @@ router
 
   router.get('/seller',userController.getSellers);
   router.get('/sellerdata/:sellerId',userController.getSellerDetails);
+router.route('/:userId/reports').get(auth('manageUsers'), userController.getFraudReports);
 
 module.exports = router;
 

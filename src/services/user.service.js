@@ -683,6 +683,18 @@ const getSellerDetails = async (sellerId) => {
 
   return result;
 };
+/**
+ * Get fraud reports by user id
+ * @param {ObjectId} userId
+ * @param {Object} options
+ * @returns {Promise<QueryResult>}
+ */
+const getFraudReportsByUserId = async (userId, options) => {
+  const filter = { reportedId: userId };
+  const reports = await Report.paginate(filter, { ...options, populate: 'reporterId' });
+  return reports;
+};
+
 module.exports = {
   createUser,
   queryUsers,
@@ -700,5 +712,6 @@ module.exports = {
   reactivateUserById,
   getResetPasswordLink,
   getSellersList,
-  getSellerDetails
+  getSellerDetails,
+  getFraudReportsByUserId,
 };
