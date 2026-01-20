@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const { Types } = mongoose;
 
 const flagSchema = new mongoose.Schema(

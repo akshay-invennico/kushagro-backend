@@ -6,3 +6,4 @@ module.exports.smsService = require('./sms.service');
 module.exports.categoryService = require('./category.service');
 module.exports.productService = require('./product.service');
 module.exports.notificationService = require('./notification.service');
+module.exports.commissionService = require('./commission.service');
