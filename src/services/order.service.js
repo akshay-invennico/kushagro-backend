@@ -60,7 +60,7 @@ const createOrder = async (payload) => {
     buyerId,
     sellerId,
     productId,
-    status: 'PENDING',
+    status: 'ONGOING',
   });
 
   const reference = `FLW_${Date.now()}_${order._id}`;
@@ -140,7 +140,7 @@ const getAllOrders = async (userId, query) => {
   const skip = (page - 1) * limit;
 
   const orderStatusMap = {
-    ongoing: 'PENDING',
+    ongoing: 'ONGOING',
     paid: 'PAID',
     completed: 'COMPLETED',
     cancelled: 'CANCELLED',
@@ -808,10 +808,6 @@ const getSellerOrders = async (sellerId, query) => {
     },
   };
 };
-
-
-
-
 
 
 module.exports = {

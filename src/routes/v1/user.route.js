@@ -29,6 +29,7 @@ router
   .get(auth('manageUsers'), validate(userValidation.getResetPasswordLink), userController.getResetPasswordLink);
 
   router.get('/seller',userController.getSellers);
+  router.get('/sellerdata/:sellerId',userController.getSellerDetails);
 
 module.exports = router;
 
