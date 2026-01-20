@@ -76,10 +76,7 @@ const reportUser = catchAsync(async (req, res) => {
 const getMyTransactions = async (req, res) => {
   const userId = req.user._id;
 
-  const data = await transactionService.getMyTransactions(
-    userId,
-    req.query
-  );
+  const data = await userService.getMyTransactions(userId, req.query);
 
   res.status(200).json({
     success: true,

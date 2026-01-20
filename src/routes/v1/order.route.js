@@ -6,28 +6,28 @@ const orderValidation = require('../../validations/order.validation');
 const {
   createOrder,
   getOrders,
-  getorderById,
+  getOrderById,
   updateOrder,
   sendOrderOtp,
   verifyOrderOtp,
   cancelOrder,
   flagOrders,
   resolveOrderFlags,
-  getSellerOrders
+  getSellerOrders,
 } = require('../../controllers/order.controller');
 
 const router = express.Router();
 
 router.post('/', validate(orderValidation.createOrder), createOrder);
 router.get('/allorders', auth(), getOrders);
-router.get('/:orderId', validate(orderValidation.getOrderById), getorderById);
+router.get('/:orderId', validate(orderValidation.getOrderById), getOrderById);
 router.patch('/update', validate(orderValidation.updateOrder), updateOrder);
 router.post('/sendotp', validate(orderValidation.sendOtpToBuyer), sendOrderOtp);
 router.post('/verify/otp', validate(orderValidation.verifyOtpUpdateOrder), verifyOrderOtp);
 router.patch('/cancel', validate(orderValidation.cancelOrder), cancelOrder);
-router.patch('/markflag',flagOrders);
-router.patch('/resolveflag',resolveOrderFlags);
-router.get('/seller/:sellerId',getSellerOrders)
+router.patch('/markflag', flagOrders);
+router.patch('/resolveflag', resolveOrderFlags);
+router.get('/seller/:sellerId', getSellerOrders);
 module.exports = router;
 
 /**

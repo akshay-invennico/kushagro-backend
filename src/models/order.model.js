@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const { Types } = mongoose;
 
 const flagSchema = new mongoose.Schema(
@@ -35,11 +36,9 @@ const orderSchema = mongoose.Schema(
     },
     quantity: {
       type: Number,
-      required: true,
     },
     unit: {
       type: String,
-      required: true,
     },
     price: {
       type: Number,
@@ -67,7 +66,7 @@ const orderSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['ONGOING', 'PAID', 'CANCELLED', 'COMPLETED'],
+      enum: ['ONGOING', 'PAID', 'CANCELLED', 'COMPLETE'],
       default: 'ONGOING',
       required: true,
     },
