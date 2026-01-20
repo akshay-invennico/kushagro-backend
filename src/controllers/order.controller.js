@@ -14,8 +14,7 @@ const createOrder = catchAsync(async (req, res) => {
 const getOrders = async (req, res) => {
   const userId = req.user._id;
 
-  const { orders, pagination } =
-    await orderService.getAllOrders(userId, req.query);
+  const { orders, pagination } = await orderService.getAllOrders(userId, req.query);
 
   res.status(httpStatus.OK).json({
     success: true,
@@ -131,7 +130,7 @@ const resolveOrderFlags = catchAsync(async (req, res) => {
 });
 
 const getBuyerOrders = async (req, res) => {
-  const buyerId = req.params.buyerId;
+  const { buyerId } = req.params;
 
   const orders = await orderService.getBuyerOrders(buyerId, req.query);
 
@@ -140,10 +139,6 @@ const getBuyerOrders = async (req, res) => {
     data: orders,
   });
 };
-
-
-
-
 
 const getSellerOrders = async (req, res) => {
   const { sellerId } = req.params;
@@ -156,8 +151,6 @@ const getSellerOrders = async (req, res) => {
   });
 };
 
-
-
 module.exports = {
   createOrder,
   getOrders,
@@ -169,5 +162,5 @@ module.exports = {
   flagOrders,
   resolveOrderFlags,
   getBuyerOrders,
-  getSellerOrders
+  getSellerOrders,
 };
