@@ -28,6 +28,8 @@ router
   .route('/:userId/reset/link')
   .get(auth('manageUsers'), validate(userValidation.getResetPasswordLink), userController.getResetPasswordLink);
 
+  router.get('/seller',userController.getSellers);
+
 module.exports = router;
 
 /**
