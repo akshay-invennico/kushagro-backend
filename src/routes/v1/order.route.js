@@ -12,7 +12,8 @@ const {
   verifyOrderOtp,
   cancelOrder,
   flagOrders,
-  resolveOrderFlags
+  resolveOrderFlags,
+  getSellerOrders
 } = require('../../controllers/order.controller');
 
 const router = express.Router();
@@ -26,7 +27,7 @@ router.post('/verify/otp', validate(orderValidation.verifyOtpUpdateOrder), verif
 router.patch('/cancel', validate(orderValidation.cancelOrder), cancelOrder);
 router.patch('/markflag',flagOrders);
 router.patch('/resolveflag',resolveOrderFlags);
-
+router.get('/seller/:sellerId',getSellerOrders)
 module.exports = router;
 
 /**

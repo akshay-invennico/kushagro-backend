@@ -60,7 +60,7 @@ const createOrder = async (payload) => {
     buyerId,
     sellerId,
     productId,
-    status: 'PENDING',
+    status: 'ONGOING',
   });
 
   const reference = `FLW_${Date.now()}_${order._id}`;
@@ -140,7 +140,7 @@ const getAllOrders = async (userId, query) => {
   const skip = (page - 1) * limit;
 
   const orderStatusMap = {
-    ongoing: 'PENDING',
+    ongoing: 'ONGOING',
     paid: 'PAID',
     completed: 'COMPLETED',
     cancelled: 'CANCELLED',
@@ -726,6 +726,90 @@ const resolveFlags = async ({ orderIds }) => {
 
 
 
+
+
+const getSellerOrders = async (sellerId, query) => {
+  const page = Math.max(parseInt(query.page) || 1, 1);
+  const limit = Math.max(parseInt(query.limit) || 10, 1);
+  const skip = (page - 1) * limit;
+
+  const matchStage = {
+    sellerId: new mongoose.Types.ObjectId(sellerId),
+  };
+
+  const pipeline = [
+    { $match: matchStage },
+
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product',
+      },
+    },
+    { $unwind: '$product' },
+
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'buyerId',
+        foreignField: '_id',
+        as: 'buyer',
+      },
+    },
+    { $unwind: '$buyer' },
+
+    {
+      $project: {
+        orderId: '$_id',
+        orderDate: '$createdAt',
+        amount: '$totalAmount',
+        status: '$status',
+
+        product: {
+          name: '$product.name',
+          category: '$product.category',
+          image: { $arrayElemAt: ['$product.images', 0] },
+        },
+
+        buyer: {
+          name: '$buyer.name',
+          email: '$buyer.email',
+          profile: '$buyer.profile',
+        },
+      },
+    },
+
+    {
+      $facet: {
+        data: [
+          { $sort: { orderDate: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        total: [{ $count: 'count' }],
+      },
+    },
+  ];
+
+  const result = await Order.aggregate(pipeline);
+
+  const orders = result[0].data;
+  const totalResults = result[0].total[0]?.count || 0;
+
+  return {
+    data: orders,
+    meta: {
+      page,
+      limit,
+      totalResults,
+      totalPages: Math.ceil(totalResults / limit),
+    },
+  };
+};
+
+
 module.exports = {
   createOrder,
   getAllOrders,
@@ -735,5 +819,6 @@ module.exports = {
   verifyOtpUpdateOrder,
   cancelOrder,
   flagOrders,
-  resolveFlags
+  resolveFlags,
+  getSellerOrders
 };

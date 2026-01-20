@@ -130,6 +130,34 @@ const resolveOrderFlags = catchAsync(async (req, res) => {
   });
 });
 
+const getBuyerOrders = async (req, res) => {
+  const buyerId = req.params.buyerId;
+
+  const orders = await orderService.getBuyerOrders(buyerId, req.query);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: orders,
+  });
+};
+
+
+
+
+
+const getSellerOrders = async (req, res) => {
+  const { sellerId } = req.params;
+
+  const result = await orderService.getSellerOrders(sellerId, req.query);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    ...result,
+  });
+};
+
+
+
 module.exports = {
   createOrder,
   getOrders,
@@ -139,5 +167,7 @@ module.exports = {
   verifyOrderOtp,
   cancelOrder,
   flagOrders,
-  resolveOrderFlags
+  resolveOrderFlags,
+  getBuyerOrders,
+  getSellerOrders
 };
