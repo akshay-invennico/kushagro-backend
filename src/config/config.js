@@ -73,6 +73,11 @@ module.exports = {
     tax: envVars.ADMIN_TAX,
     platformCharges: envVars.PLATFORM_CHARGE,
   },
+  firebase:{
+    FIREBASE_PRIVATE_KEY: envVars.FIREBASE_PRIVATE_KEY,
+    FIREBASE_CLIENT_EMAIL: envVars.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PROJECT_ID:envVars.FIREBASE_PROJECT_ID
+  },
   aws: {
     s3: {
       secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY,

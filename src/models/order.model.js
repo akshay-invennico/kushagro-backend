@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const { Types } = mongoose;
 
 const flagSchema = new mongoose.Schema(
@@ -35,7 +36,6 @@ const orderSchema = mongoose.Schema(
     },
     quantity: {
       type: Number,
-      required: true,
     },
     unit: {
       type: String,
@@ -66,8 +66,8 @@ const orderSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['PENDING', 'PAID', 'CANCELLED', 'COMPLETED'],
-      default: 'PENDING',
+      enum: ['ONGOING', 'PAID', 'CANCELLED', 'COMPLETE'],
+      default: 'ONGOING',
       required: true,
     },
     OTP: {
@@ -95,7 +95,9 @@ const orderSchema = mongoose.Schema(
       required: true,
       ref: 'Product',
     },
-
+    deliveryDate: {
+      type: Date
+    },
     isFlagged: {
       type: Boolean,
       default: false,
