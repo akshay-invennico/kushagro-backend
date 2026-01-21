@@ -23,7 +23,7 @@ const createProduct = catchAsync(async (req, res) => {
 
 const getProducts = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['name', 'categoryId', 'status']);
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page', 'priceOrder']);
 
   const { role } = req.user;
   const userId = req.user._id;

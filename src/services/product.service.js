@@ -38,7 +38,15 @@ const queryProducts = async (filter, options) => {
   const skip = (page - 1) * limit;
 
   let sort = { createdAt: -1 };
-  if (options.sortBy) {
+  if (options.priceOrder === 'highToLow') {
+    sort = { price: -1 };
+  }
+
+  if (options.priceOrder === 'lowToHigh') {
+    sort = { price: 1 };
+  }
+
+  if (!options.priceOrder && options.sortBy) {
     sort = {};
     options.sortBy.split(',').forEach((sortOption) => {
       const [key, order] = sortOption.split(':');
