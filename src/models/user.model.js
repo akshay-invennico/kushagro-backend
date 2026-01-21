@@ -121,6 +121,17 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    identityVerificationStatus: {
+      type: String,
+      enum: ['PENDING', 'APPROVED', 'REJECTED'],
+      default: 'PENDING',
+    },
+
+    rejectionReasons: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
