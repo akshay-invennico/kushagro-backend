@@ -32,7 +32,6 @@ const createOrder = async (payload) => {
   const { price } = productDetails;
   const { sellerId } = productDetails;
    const quantity=1;
-   const unit = productDetails.extraFields.unit;
   const checkBuyer = await User.findOne({ _id: buyerId, role: 'BUYER' });
   const checkSeller = await User.findOne({ _id: sellerId, role: 'SELLER' });
   if (!checkBuyer || !checkSeller) {
@@ -50,7 +49,6 @@ const createOrder = async (payload) => {
   const order = await Order.create({
     orderNumber,
     quantity,
-    unit,
     price,
     subTotal,
     tax: taxAmount,

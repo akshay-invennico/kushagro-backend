@@ -39,7 +39,6 @@ const orderSchema = mongoose.Schema(
     },
     unit: {
       type: String,
-      required: true,
     },
     price: {
       type: Number,

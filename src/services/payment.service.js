@@ -93,7 +93,7 @@ const paySeller = async (payload) => {
 
   const { buyerId } = order;
 
-  if (order.status !== 'COMPLETED') {
+  if (order.status !== 'COMPLETE') {
     throw new Error('Order must be COMPLETED before payout');
   }
 
