@@ -10,6 +10,8 @@ const productRoute = require('./product.route');
 const ticketRoute = require('./ticket.route');
 const ratingRoute = require('./rating.route');
 const notificationRoute = require('./notification.route');
+const commissionRoute = require('./commission.route');
+const dashboardRoute = require('./dashboard.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -54,6 +56,14 @@ const defaultRoutes = [
   {
     path: '/notification',
     route: notificationRoute,
+  },
+  {
+    path: '/commission',
+    route: commissionRoute,
+  },
+  {
+    path: '/dashboard',
+    route: dashboardRoute,
   },
 ];
 

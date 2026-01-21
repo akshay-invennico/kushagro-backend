@@ -16,7 +16,7 @@ router
   .route('/delete/account')
   .patch(auth('manageUsers'), validate(userValidation.deleteAccount), userController.deleteAccount);
 router.route('/report/:userId').post(auth('manageUsers'), validate(userValidation.reportUser), userController.reportUser);
-router.get('/transactions',auth(),userController.getMyTransactions);
+router.get('/transactions', auth(), userController.getMyTransactions);
 
 router.route('/:userId/suspend').post(auth('manageUsers'), validate(userValidation.suspendUser), userController.suspendUser);
 
@@ -28,6 +28,8 @@ router
   .route('/:userId/reset/link')
   .get(auth('manageUsers'), validate(userValidation.getResetPasswordLink), userController.getResetPasswordLink);
 
+router.get('/seller', userController.getSellers);
+router.get('/sellerdata/:sellerId', userController.getSellerDetails);
 router.route('/:userId/reports').get(auth('manageUsers'), userController.getFraudReports);
 
 module.exports = router;

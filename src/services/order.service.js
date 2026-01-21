@@ -58,7 +58,7 @@ const createOrder = async (payload) => {
     buyerId,
     sellerId,
     productId,
-    status: 'PENDING',
+    status: 'ONGOING',
   });
 
   const reference = `FLW_${Date.now()}_${order._id}`;
@@ -904,6 +904,11 @@ const getSellerOrders = async (sellerId, query) => {
     },
   };
 };
+
+
+
+
+
 
 
 module.exports = {

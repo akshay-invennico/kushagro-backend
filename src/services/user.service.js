@@ -453,6 +453,236 @@ const getResetPasswordLink = async (userId) => {
   }
 };
 
+const getSellersList = async (query) => {
+  const page = Math.max(parseInt(query.page) || 1, 1);
+  const limit = Math.max(parseInt(query.limit) || 10, 1);
+  const skip = (page - 1) * limit;
+
+  const pipeline = [
+    {
+      $match: { role: 'SELLER' },
+    },
+
+    {
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: 'sellerId',
+        as: 'products',
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'sellerId',
+        as: 'orders',
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'payments',
+        let: { sellerId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$sellerId', '$$sellerId'] },
+                  { $eq: ['$type', 'Payout'] },
+                  { $eq: ['$status', 'Payout success'] },
+                ],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalEarnings: {
+                $sum: { $toDouble: '$amount' },
+              },
+            },
+          },
+        ],
+        as: 'earnings',
+      },
+    },
+
+    {
+      $addFields: {
+        totalListings: { $size: '$products' },
+        totalOrders: { $size: '$orders' },
+        earnings: {
+          $ifNull: [{ $arrayElemAt: ['$earnings.totalEarnings', 0] }, 0],
+        },
+        idStatus: {
+          $cond: [{ $eq: ['$isAccountVerified', true] }, 'Verified', 'Pending'],
+        },
+        status: {
+          $cond: [{ $eq: ['$isBlocked', true] }, 'Suspended', 'Active'],
+        },
+      },
+    },
+
+    {
+      $project: {
+        name: 1,
+        email: 1,
+        phone: 1,
+        profile: 1,
+        createdAt: 1,
+        totalListings: 1,
+        totalOrders: 1,
+        earnings: 1,
+        idStatus: 1,
+        status: 1,
+      },
+    },
+
+    {
+      $facet: {
+        data: [
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        total: [{ $count: 'count' }],
+      },
+    },
+  ];
+
+  const result = await User.aggregate(pipeline);
+
+  const sellers = result[0].data;
+  const total = result[0].total[0]?.count || 0;
+
+  return {
+    data: sellers,
+    meta: {
+      page,
+      limit,
+      totalResults: total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+
+const getSellerDetails = async (sellerId) => {
+  const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
+
+  const [result] = await User.aggregate([
+    {
+      $match: {
+        _id: sellerObjectId,
+        role: 'SELLER',
+      },
+    },
+
+
+    {
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: 'sellerId',
+        as: 'products',
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'orders',
+        localField: '_id',
+        foreignField: 'sellerId',
+        as: 'orders',
+      },
+    },
+
+    {
+      $lookup: {
+        from: 'payments',
+        let: { sellerId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$sellerId', '$$sellerId'] },
+                  { $eq: ['$type', 'Payout'] },
+                  { $eq: ['$status', 'Payout success'] },
+                ],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: { $toDouble: '$amount' } },
+            },
+          },
+        ],
+        as: 'earnings',
+      },
+    },
+
+    {
+      $addFields: {
+        totalListings: { $size: '$products' },
+        totalOrders: { $size: '$orders' },
+        completedOrders: {
+          $size: {
+            $filter: {
+              input: '$orders',
+              as: 'order',
+              cond: { $eq: ['$$order.status', 'Completed'] },
+            },
+          },
+        },
+        totalEarnings: {
+          $ifNull: [{ $arrayElemAt: ['$earnings.total', 0] }, 0],
+        },
+        verificationStatus: {
+          $cond: [{ $eq: ['$isAccountVerified', true] }, 'Verified', 'Pending'],
+        },
+        status: {
+          $cond: [{ $eq: ['$isBlocked', true] }, 'Suspended', 'Active'],
+        },
+      },
+    },
+
+    {
+      $project: {
+        stats: {
+          totalOrders: '$totalOrders',
+          completedOrders: '$completedOrders',
+          totalListings: '$totalListings',
+          totalEarnings: '$totalEarnings',
+        },
+        seller: {
+          _id: '$_id',
+          name: '$name',
+          email: '$email',
+          phone: '$phone',
+          profile: '$profile',
+          address: '$address',
+          bio: '$bio',
+          governmentId: '$governmentId',
+          joinedAt: '$createdAt',
+          status: '$status',
+          verificationStatus: '$verificationStatus',
+        },
+      },
+    },
+  ]);
+
+  if (!result) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Seller not found');
+  }
+
+  return result;
+};
 /**
  * Get fraud reports by user id
  * @param {ObjectId} userId
@@ -481,5 +711,7 @@ module.exports = {
   suspendUserById,
   reactivateUserById,
   getResetPasswordLink,
+  getSellersList,
+  getSellerDetails,
   getFraudReportsByUserId,
 };

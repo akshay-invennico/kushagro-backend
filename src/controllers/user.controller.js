@@ -76,10 +76,7 @@ const reportUser = catchAsync(async (req, res) => {
 const getMyTransactions = async (req, res) => {
   const userId = req.user._id;
 
-  const data = await transactionService.getMyTransactions(
-    userId,
-    req.query
-  );
+  const data = await userService.getMyTransactions(userId, req.query);
 
   res.status(200).json({
     success: true,
@@ -130,6 +127,25 @@ const getResetPasswordLink = catchAsync(async (req, res) => {
   });
 });
 
+const getSellers = async (req, res) => {
+  const result = await userService.getSellersList(req.query);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: result.data,
+    meta: result.meta,
+  });
+};
+const getSellerDetails = async (req, res) => {
+  const { sellerId } = req.params;
+
+  const result = await userService.getSellerDetails(sellerId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: result,
+  });
+};
 const getFraudReports = catchAsync(async (req, res) => {
   const { userId } = req.params;
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
@@ -148,5 +164,7 @@ module.exports = {
   suspendUser,
   reactivateUser,
   getResetPasswordLink,
+  getSellers,
+  getSellerDetails,
   getFraudReports,
 };

@@ -22,7 +22,7 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   }
 
   if (!user.isActive) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Your account is not active');
+    throw new ApiError(httpStatus.NOT_FOUND, 'Your account is not active');
   }
 
   if (user.isVerified && user.isAccountVerified) {
@@ -38,7 +38,7 @@ const loginUserWithPhoneAndPassword = async (phone, password) => {
   }
 
   if (!user.isActive) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Your account is not active');
+    throw new ApiError(httpStatus.NOT_FOUND, 'Your account is not active');
   }
 
   if (user.isVerified && user.isAccountVerified) {

@@ -70,7 +70,6 @@ const paySeller = {
 const refundBuyer = {
   body: Joi.object({
     orderId: Joi.string().custom(objectId).required(),
-    reason: Joi.string().trim().allow('', null),
   }),
 };
 

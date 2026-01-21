@@ -32,6 +32,7 @@ const getProducts = {
     minPrice: Joi.number(),
     maxPrice: Joi.number(),
     status: Joi.string(),
+    priceOrder: Joi.string().valid('highToLow', 'lowToHigh'),
   }),
 };
 
