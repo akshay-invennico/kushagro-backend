@@ -36,11 +36,9 @@ const orderSchema = mongoose.Schema(
     },
     quantity: {
       type: Number,
-      required: true,
     },
     unit: {
       type: String,
-      required: true,
     },
     price: {
       type: Number,
@@ -68,7 +66,7 @@ const orderSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['ONGOING', 'PAID', 'CANCELLED', 'COMPLETED'],
+      enum: ['ONGOING', 'PAID', 'CANCELLED', 'COMPLETE'],
       default: 'ONGOING',
       required: true,
     },
@@ -97,7 +95,9 @@ const orderSchema = mongoose.Schema(
       required: true,
       ref: 'Product',
     },
-
+    deliveryDate: {
+      type: Date
+    },
     isFlagged: {
       type: Boolean,
       default: false,

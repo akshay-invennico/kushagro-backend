@@ -9,7 +9,7 @@ const createOrder = {
 };
 
 const getOrderById = {
-  params: Joi.object({
+  params: Joi.object().keys({
     orderId: Joi.string().custom(objectId).required(),
   }),
 };
@@ -36,8 +36,8 @@ const verifyOtpUpdateOrder = {
 const cancelOrder = {
   body: Joi.object({
     orderId: Joi.string().custom(objectId).required(),
-    cancellationReason: Joi.string().required(),
-    note: Joi.string().required(),
+    cancellationReason: Joi.string().optional().allow(null, ''),
+    note: Joi.string().optional().allow(null, ''),
   }),
 };
 

@@ -32,7 +32,6 @@ const createOrder = async (payload) => {
   const { price } = productDetails;
   const { sellerId } = productDetails;
    const quantity=1;
-   const unit = productDetails.extraFields.unit;
   const checkBuyer = await User.findOne({ _id: buyerId, role: 'BUYER' });
   const checkSeller = await User.findOne({ _id: sellerId, role: 'SELLER' });
   if (!checkBuyer || !checkSeller) {
@@ -50,7 +49,6 @@ const createOrder = async (payload) => {
   const order = await Order.create({
     orderNumber,
     quantity,
-    unit,
     price,
     subTotal,
     tax: taxAmount,
@@ -139,37 +137,22 @@ const getAllOrders = async (userId, query) => {
   const limit = Math.max(parseInt(query.limit) || 10, 1);
   const skip = (page - 1) * limit;
 
-  const orderStatusMap = {
-    ongoing: 'ONGOING',
-    paid: 'PAID',
-    completed: 'COMPLETED',
-    cancelled: 'CANCELLED',
-  };
-
-  const paymentStatusMap = {
-    paid: 'Payment success',
-    pending: 'Pending',
-    refunded: 'Refund completed',
-  };
-
   const user = await User.findById(userId);
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
+  /* ================= BASE MATCH ================= */
   const orderMatch = {};
-
-  if (orderStatus && orderStatus !== 'all') {
-    if (!orderStatusMap[orderStatus]) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid order status');
-    }
-    orderMatch.status = orderStatusMap[orderStatus];
-  }
 
   if (user.role === 'SELLER') orderMatch.sellerId = userId;
   else if (user.role === 'BUYER') orderMatch.buyerId = userId;
   else if (user.role !== 'ADMIN') {
     throw new ApiError(httpStatus.FORBIDDEN, 'Unauthorized role');
+  }
+
+  if (orderStatus && orderStatus !== 'all') {
+    orderMatch.status = orderStatus.toUpperCase();
   }
 
   if (amountFrom || amountTo) {
@@ -184,18 +167,51 @@ const getAllOrders = async (userId, query) => {
     if (toDate) orderMatch.createdAt.$lte = new Date(toDate);
   }
 
+  /* ================= PIPELINE ================= */
   const pipeline = [
     { $match: orderMatch },
 
+    /* ---------- PAYMENTS ---------- */
     {
       $lookup: {
         from: 'payments',
-        localField: '_id',
-        foreignField: 'orderId',
+        let: { orderId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$orderId', '$$orderId'] },
+            },
+          },
+        ],
         as: 'payments',
       },
     },
 
+    /* ---------- FIND LATEST PAYMENT USING TIMESTAMP ---------- */
+    {
+      $addFields: {
+        latestPayment: {
+          $reduce: {
+            input: '$payments',
+            initialValue: null,
+            in: {
+              $cond: [
+                {
+                  $or: [
+                    { $eq: ['$$value', null] },
+                    { $gt: ['$$this.createdAt', '$$value.createdAt'] },
+                  ],
+                },
+                '$$this',
+                '$$value',
+              ],
+            },
+          },
+        },
+      },
+    },
+
+    /* ---------- PRODUCT ---------- */
     {
       $lookup: {
         from: 'products',
@@ -206,6 +222,7 @@ const getAllOrders = async (userId, query) => {
     },
     { $unwind: '$product' },
 
+    /* ---------- CATEGORY ---------- */
     {
       $lookup: {
         from: 'categories',
@@ -217,28 +234,101 @@ const getAllOrders = async (userId, query) => {
     { $unwind: '$category' },
   ];
 
-  if (category && category !== 'All') {
-    pipeline.push({
-      $match: { 'category.name': category },
-    });
+  /* ================= CATEGORY FILTER ================= */
+  if (category && category !== 'all') {
+    pipeline.push({ $match: { 'category.name': category } });
   }
 
+  /* ================= PAYMENT STATUS FILTER (LATEST ONLY) ================= */
   if (paymentStatus && paymentStatus !== 'all') {
-    if (!paymentStatusMap[paymentStatus]) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid payment status');
+    if (paymentStatus === 'pending') {
+      pipeline.push({
+        $match: {
+          $or: [
+            { latestPayment: null },
+            { 'latestPayment.status': { $ne: 'Payment success' } },
+          ],
+        },
+      });
+    } else {
+      pipeline.push({
+        $match: {
+          'latestPayment.status': paymentStatus,
+        },
+      });
     }
+  }
 
-    pipeline.push({
-      $match: {
-        payments: {
-          $elemMatch: {
-            status: paymentStatusMap[paymentStatus],
-          },
+  /* ================= ADMIN LOOKUPS ================= */
+  if (user.role === 'ADMIN') {
+    pipeline.push(
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'buyerId',
+          foreignField: '_id',
+          as: 'buyer',
         },
       },
-    });
+      { $unwind: '$buyer' },
+
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'sellerId',
+          foreignField: '_id',
+          as: 'seller',
+        },
+      },
+      { $unwind: '$seller' }
+    );
   }
 
+  /* ================= FINAL PROJECTION ================= */
+  pipeline.push({
+    $project: {
+      orderId: '$_id',
+      date: '$createdAt',
+      amount: '$totalAmount',
+      status: '$status',
+
+      /* ✅ REAL LATEST PAYMENT STATUS FROM DB */
+      paymentStatus: {
+        $cond: [
+          { $ifNull: ['$latestPayment', false] },
+          '$latestPayment.status',
+          'Pending',
+        ],
+      },
+
+      product: {
+        name: '$product.name',
+        image: { $arrayElemAt: ['$product.images', 0] },
+        category: '$category.name',
+        extraFields: '$product.extraFields',
+      },
+
+      buyer:
+        user.role === 'ADMIN'
+          ? {
+              name: '$buyer.name',
+              email: '$buyer.email',
+              profile: '$buyer.profile',
+            }
+          : '$$REMOVE',
+
+      seller:
+        user.role === 'ADMIN'
+          ? {
+              name: '$seller.name',
+              email: '$seller.email',
+              profile: '$seller.profile',
+            }
+          : '$$REMOVE',
+    },
+  });
+
+  /* ================= PAGINATION ================= */
   pipeline.push({
     $facet: {
       data: [
@@ -256,11 +346,11 @@ const getAllOrders = async (userId, query) => {
   const total = result[0].total[0]?.count || 0;
 
   return {
-    orders,
-    pagination: {
+    data: orders,
+    meta: {
       page,
       limit,
-      total,
+      totalResults: total,
       totalPages: Math.ceil(total / limit),
     },
   };
@@ -268,6 +358,10 @@ const getAllOrders = async (userId, query) => {
 
 
 const getOrderById = async ({ orderId }) => {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid order id');
+  }
+
   const pipeline = [
     {
       $match: {
@@ -275,7 +369,6 @@ const getOrderById = async ({ orderId }) => {
       },
     },
 
-    /** Payment (latest successful PayIn) */
     {
       $lookup: {
         from: 'payments',
@@ -311,7 +404,6 @@ const getOrderById = async ({ orderId }) => {
     },
     { $unwind: { path: '$payment', preserveNullAndEmptyArrays: true } },
 
-    /** Buyer */
     {
       $lookup: {
         from: 'users',
@@ -322,7 +414,6 @@ const getOrderById = async ({ orderId }) => {
     },
     { $unwind: { path: '$buyer', preserveNullAndEmptyArrays: true } },
 
-    /** Seller */
     {
       $lookup: {
         from: 'users',
@@ -333,7 +424,6 @@ const getOrderById = async ({ orderId }) => {
     },
     { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
 
-    /** Product */
     {
       $lookup: {
         from: 'products',
@@ -344,7 +434,6 @@ const getOrderById = async ({ orderId }) => {
     },
     { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
 
-    /** Category */
     {
       $lookup: {
         from: 'categories',
@@ -355,7 +444,6 @@ const getOrderById = async ({ orderId }) => {
     },
     { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
 
-    /** Final Shape */
     {
       $project: {
         _id: 1,
@@ -370,6 +458,10 @@ const getOrderById = async ({ orderId }) => {
         totalAmount: 1,
         paybleAmount: 1,
         createdAt: 1,
+        deliveryDate: 1,
+
+        OTP: { $ifNull: ['$OTP', null] },
+        otpExpiresAt: { $ifNull: ['$otpExpiresAt', null] },
 
         payment: {
           reference: 1,
@@ -386,12 +478,14 @@ const getOrderById = async ({ orderId }) => {
           name: '$buyer.name',
           email: '$buyer.email',
           phone: '$buyer.phone',
+          profile: '$buyer.profile'
         },
 
         seller: {
           _id: '$seller._id',
           name: '$seller.name',
           email: '$seller.email',
+          profile: '$seller.profile'
         },
 
         product: {
@@ -411,13 +505,13 @@ const getOrderById = async ({ orderId }) => {
   ];
 
   const result = await Order.aggregate(pipeline);
-
-  if (!result.length) {
+  if (!result || result.length === 0) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
   return result[0];
 };
+
 
 
 const updateOrder = async (payload) => {
@@ -433,7 +527,7 @@ const updateOrder = async (payload) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Payment not completed for one or more orders');
   }
 
-  return Order.updateMany({ _id: { $in: orderIds } }, { $set: { status: 'COMPLETED' } });
+  return Order.updateMany({ _id: { $in: orderIds } }, { $set: { status: 'COMPLETE' } });
 };
 
 const sendOtpToBuyer = async (payload) => {
@@ -481,7 +575,10 @@ const verifyOtpUpdateOrder = async (payload) => {
 
   const order = await Order.findById(orderId);
   if (!order) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+    return {
+      success: false,
+      message: 'Order not found',
+    };
   }
 
   if (!order.OTP || !order.otpExpiresAt) {
@@ -518,15 +615,18 @@ const verifyOtpUpdateOrder = async (payload) => {
     };
   }
 
-  order.status = 'COMPLETED';
+  // Update order
+  order.status = 'COMPLETE';
   order.OTP = null;
   order.otpExpiresAt = null;
+  order.deliveryDate = new Date();
   await order.save();
+
   // notification for buyer
   await notificationService.createNotification({
     recipient: order.buyerId,
     title: 'Order Delivered',
-    message: `Order Delivered! Your order #${orderDetails.orderNumber} has been delivered successfully.`,
+    message: `Order Delivered! Your order #${order.orderNumber} has been delivered successfully.`,
     type: 'ORDER_DELIVERED',
     data: { orderId: order.id, role: 'BUYER' },
   });
@@ -535,7 +635,7 @@ const verifyOtpUpdateOrder = async (payload) => {
   await notificationService.createNotification({
     recipient: order.sellerId,
     title: 'Order Completed',
-    message: `Order Completed! Order #${orderDetails.orderNumber} has been delivered.`,
+    message: `Order Completed! Order #${order.orderNumber} has been delivered.`,
     type: 'ORDER_COMPLETED',
     data: { orderId: order.id, role: 'SELLER' },
   });
@@ -549,6 +649,7 @@ const verifyOtpUpdateOrder = async (payload) => {
 const cancelOrder = async (payload) => {
   const { orderId, note, cancellationReason } = payload;
 
+  /* ================= ORDER VALIDATION ================= */
   const order = await Order.findById(orderId);
   if (!order) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
@@ -558,102 +659,101 @@ const cancelOrder = async (payload) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Order already cancelled');
   }
 
-  if (order.status === 'COMPLETED') {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Completed orders cannot be cancelled');
+  if (order.status === 'COMPLETE') {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'Completed orders cannot be cancelled'
+    );
   }
 
-  const payInPayment = await Payment.findOne({
-    orderId,
-    type: 'PayIn',
-  });
-
-  if (payInPayment) {
-    if (payInPayment.status === 'Refund initiated') {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Refund already initiated. Please wait for completion.');
-    }
-
-    if (payInPayment.status === 'Payment success') {
-      await Payment.updateOne({ _id: payInPayment._id }, { $set: { status: 'Refund initiated' } });
-    }
-  }
-
-  const buyerPayment = await Payment.findOne({
+  /* ================= PAYIN PAYMENT ================= */
+  const paymentDoc = await Payment.findOne({
     orderId,
     type: 'PayIn',
     status: 'Payment success',
   });
 
-  if (!buyerPayment) {
+  if (!paymentDoc) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Payment not completed');
   }
 
+  /* ================= PREVENT DOUBLE REFUND ================= */
+  if (
+    paymentDoc.type === 'Refund' &&
+    ['Refund initiated', 'Refund completed'].includes(paymentDoc.status)
+  ) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'Refund already initiated for this order'
+    );
+  }
+
+  /* ================= TRANSACTION ID ================= */
   let transactionId = null;
 
-  if (buyerPayment.authorization_Id && buyerPayment.authorization_Id.transactionId) {
-    transactionId = buyerPayment.authorization_Id.transactionId;
-  } else if (buyerPayment.reference) {
-    transactionId = buyerPayment.reference;
+  if (paymentDoc.authorization_Id?.transactionId) {
+    transactionId = paymentDoc.authorization_Id.transactionId;
+  } else if (paymentDoc.reference) {
+    transactionId = paymentDoc.reference;
   }
 
   if (!transactionId) {
-    throw new Error('Transaction ID missing');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Transaction ID missing');
   }
 
+  /* ================= REFUND REQUEST ================= */
   const refundPayload = {
     amount: order.paybleAmount,
     comments: cancellationReason || `Refund for order ${order.orderNumber}`,
   };
 
-  const response = await payment.post(`/transactions/${transactionId}/refund`, refundPayload);
+  const response = await payment.post(
+    `/transactions/${transactionId}/refund`,
+    refundPayload
+  );
 
-  if (response && response.data) {
-    await Order.updateOne(
-      { _id: orderId },
-      {
-        $set: {
-          status: 'CANCELLED',
-          cancellationReason: cancellationReason || 'Order cancelled',
-          note: note || null,
-        },
-      }
-    );
-
-    await Payment.create({
-      orderId,
-      buyerId: order.buyerId,
-      sellerId: order.sellerId,
-      type: 'Refund',
-      amount: order.paybleAmount.toString(),
-      reference: transactionId,
-      originalReference: buyerPayment.reference,
-      status: 'Refund initiated',
-      refund_reason: refundPayload.comments,
-      date: new Date().toISOString(),
-      currency: buyerPayment.currency || 'UGX',
-    });
+  if (!response?.data) {
+    throw new ApiError(httpStatus.BAD_GATEWAY, 'Refund initiation failed');
   }
 
-  let message = 'Order cancelled successfully';
-  let paymentStatus = null;
-
-  if (payInPayment) {
-    paymentStatus = payInPayment.status;
-    if (payInPayment.status === 'Payment success') {
-      message = 'Order cancelled and refund initiated';
-      paymentStatus = 'Refund initiated';
+  /* ================= UPDATE ORDER ================= */
+  await Order.updateOne(
+    { _id: orderId },
+    {
+      $set: {
+        cancellationReason: cancellationReason || 'Order cancelled',
+        note: note || null,
+      },
     }
-  }
+  );
 
+  /* ================= UPDATE SAME PAYMENT DOCUMENT ================= */
+  await Payment.updateOne(
+    { _id: paymentDoc._id },
+    {
+      $set: {
+        type: 'Refund',
+        status: 'Refund initiated',
+        refund_reason: refundPayload.comments,
+        originalReference: paymentDoc.reference,
+        reference: transactionId,
+        updatedAt: new Date(),
+      },
+    }
+  );
+
+  /* ================= RESPONSE ================= */
   return {
     success: true,
-    message,
+    message: 'Order cancelled and refund initiated',
     data: {
       orderId,
       orderStatus: 'CANCELLED',
-      paymentStatus,
+      paymentStatus: 'Refund initiated',
     },
   };
 };
+
 
 const flagOrders = async ({ orderIds, reason, note }) => {
   const ids = Array.isArray(orderIds) ? orderIds : [orderIds];
@@ -722,10 +822,6 @@ const resolveFlags = async ({ orderIds }) => {
     orderIds: ids,
   };
 };
-
-
-
-
 
 
 const getSellerOrders = async (sellerId, query) => {
@@ -808,6 +904,11 @@ const getSellerOrders = async (sellerId, query) => {
     },
   };
 };
+
+
+
+
+
 
 
 module.exports = {

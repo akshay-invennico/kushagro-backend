@@ -14,7 +14,10 @@ const createOrder = catchAsync(async (req, res) => {
 const getOrders = async (req, res) => {
   const userId = req.user._id;
 
-  const { orders, pagination } = await orderService.getAllOrders(userId, req.query);
+  const result = await orderService.getAllOrders(userId, req.query);
+
+  const orders = result.data;
+  const { meta } = result;
 
   res.status(httpStatus.OK).json({
     success: true,
@@ -22,28 +25,27 @@ const getOrders = async (req, res) => {
     data: orders,
     meta: {
       count: orders.length,
-      page: pagination.page,
-      limit: pagination.limit,
-      totalPages: pagination.totalPages,
-      totalResults: pagination.total,
+      page: meta.page,
+      limit: meta.limit,
+      totalPages: meta.totalPages,
+      totalResults: meta.totalResults,
     },
     error: null,
   });
 };
 
-const getorderById = catchAsync(async (req, res) => {
-  const data = await orderService.getOrderById(req.params.orderId);
-  if (!data) {
-    res.status(httpStatus.NOT_FOUND).send({
-      success: false,
-      message: 'Order details not found',
-    });
-  }
-  res.status(httpStatus.OK).send({
-    success: true,
-    data,
+const getOrderById = async (req, res) => {
+  const order = await orderService.getOrderById({
+    orderId: req.params.orderId,
   });
-});
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Order fetched successfully',
+    data: order,
+    error: null,
+  });
+};
 
 const updateOrder = async (req, res) => {
   try {
@@ -83,7 +85,7 @@ const verifyOrderOtp = async (req, res) => {
     const result = await orderService.verifyOtpUpdateOrder(req.body);
 
     res.status(httpStatus.OK).json({
-      success: true,
+      success: result.success, 
       message: result.message,
     });
   } catch (error) {
@@ -93,6 +95,7 @@ const verifyOrderOtp = async (req, res) => {
     });
   }
 };
+
 
 const cancelOrder = catchAsync(async (req, res) => {
   const data = await orderService.cancelOrder(req.body);
@@ -154,7 +157,7 @@ const getSellerOrders = async (req, res) => {
 module.exports = {
   createOrder,
   getOrders,
-  getorderById,
+  getOrderById,
   updateOrder,
   sendOrderOtp,
   verifyOrderOtp,
