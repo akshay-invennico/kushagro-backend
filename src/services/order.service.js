@@ -460,6 +460,7 @@ const getOrderById = async ({ orderId }) => {
         totalAmount: 1,
         paybleAmount: 1,
         createdAt: 1,
+        deliveryDate: 1,
 
         payment: {
           reference: 1,
@@ -612,6 +613,7 @@ const verifyOtpUpdateOrder = async (payload) => {
   order.status = 'COMPLETE';
   order.OTP = null;
   order.otpExpiresAt = null;
+  order.deliveryDate=new Date();
   await order.save();
   // notification for buyer
   await notificationService.createNotification({
