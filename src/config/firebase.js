@@ -1,9 +1,9 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./khushagro-c87ff-3453e63af1d7.json');
+const config = require('./config');
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(config.firebase.firebasejson),
   });
 }
 

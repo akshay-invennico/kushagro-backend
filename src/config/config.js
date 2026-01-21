@@ -31,6 +31,14 @@ const { value: envVars, error } = envVarsSchema.prefs({ errors: { label: 'key' }
 if (error) {
   throw new Error(`Config validation error: ${error.message}`);
 }
+let firebasejson;
+
+try {
+  firebasejson = JSON.parse(envVars.FIREBASE_JSON);
+  firebasejson.private_key = firebasejson.private_key.replace(/\\n/g, '\n');
+} catch (err) {
+  throw new Error('Invalid FIREBASE_JSON format');
+}
 
 module.exports = {
   env: envVars.NODE_ENV,
@@ -72,6 +80,9 @@ module.exports = {
   order: {
     tax: envVars.ADMIN_TAX,
     platformCharges: envVars.PLATFORM_CHARGE,
+  },
+  firebase: {
+    firebasejson,
   },
   aws: {
     s3: {
