@@ -6,6 +6,8 @@ const Payment = require('../models/payment.model');
 const tokenService = require('./token.service');
 const smsService = require('./sms.service');
 const emailService = require('./email.service');
+const { sendVerificationEmail } = require('./email.service');
+const { sendOtpSms } = require('./sms.service');
 
 /**
  * Create a user
@@ -676,6 +678,161 @@ const saveFcmToken = async ({userId,fcmToken}) => {
     message: 'FCM token saved successfully',
   };
 }
+
+
+
+/**
+ * Add a new address for a user
+ * @param {String} userId
+ * @param {Object} addressData
+ * @returns {Promise<User>}
+ */
+const addAddress = async (userId, addressData) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  user.addresses.push(addressData);
+  await user.save();
+  return user.addresses; 
+};
+
+/**
+ * Get all addresses of a user
+ * @param {String} userId
+ * @returns {Promise<Array>}
+ */
+const getAddresses = async (userId) => {
+  const user = await User.findById(userId).select('addresses');
+  if (!user) {
+    throw new Error('User not found');
+  }
+  return user.addresses;
+};
+
+function generateOTP() {
+  return Math.floor(1000 + Math.random() * 9000);
+}
+const sendOtpToBuyerBeforeOrder = async (userId) => {
+  const otp = generateOTP();
+  const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Buyer not found');
+  }
+
+  try {
+    // 🔹 SEND OTP FIRST (NO DB WRITE YET)
+    if (user.primaryKey === 'email') {
+      if (!user.email) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Buyer email not found');
+      }
+      await sendVerificationEmail(user.email, otp);
+
+    } else if (user.primaryKey === 'phone') {
+      if (!user.phone) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Buyer phone not found');
+      }
+      await sendOtpSms(user.phone, otp);
+
+    } else {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid primary key');
+    }
+
+    // 🔹 SAVE OTP ONLY AFTER SUCCESSFUL SEND
+    user.orderOtp = otp;
+    user.orderOtpExpiresAt = otpExpiry;
+    await user.save();
+
+    return {
+      success: true,
+      message: 'OTP sent successfully to buyer',
+    };
+
+  } catch (error) {
+    // 🔴 HANDLE TWILIO / EMAIL ERRORS CLEANLY
+
+    if (error.code === 21608) {
+      // Twilio trial unverified number error
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'Phone number is not verified. Please verify the number or use email OTP.'
+      );
+    }
+
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message || 'Failed to send OTP'
+    );
+  }
+};
+
+
+const verifyOtpBeforeOrder = async (payload) => {
+  const { userId, otp } = payload;
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return {
+      success: false,
+      message: 'user not found',
+    };
+  }
+
+  if (!user.orderOtp || !user.orderOtpExpiresAt) {
+    return {
+      success: false,
+      message: 'OTP not generated or already used',
+    };
+  }
+
+  if (user.orderOtpExpiresAt < new Date()) {
+    return {
+      success: false,
+      message: 'OTP has expired',
+    };
+  }
+  if (String(user.orderOtp) !== String(otp)) {
+    return {
+      success: false,
+      message: 'Invalid OTP',
+    };
+  }
+
+ 
+
+  user.orderOtp = null;
+  user.orderOtpExpiresAt = null;
+  await user.save();
+
+  
+  // // notification for buyer
+  // await notificationService.createNotification({
+  //   recipient: order.buyerId,
+  //   title: 'Order Delivered',
+  //   message: `Order Delivered! Your order #${order.orderNumber} has been delivered successfully.`,
+  //   type: 'ORDER_DELIVERED',
+  //   data: { orderId: order.id, role: 'BUYER' },
+  // });
+
+  // // notification for seller
+  // await notificationService.createNotification({
+  //   recipient: order.sellerId,
+  //   title: 'Order Completed',
+  //   message: `Order Completed! Order #${order.orderNumber} has been delivered.`,
+  //   type: 'ORDER_COMPLETED',
+  //   data: { orderId: order.id, role: 'SELLER' },
+  // });
+
+  return {
+    success: true,
+    message: 'OTP verified',
+  };
+};
+
+
 module.exports = {
   createUser,
   queryUsers,
@@ -693,5 +850,9 @@ module.exports = {
   getResetPasswordLink,
   getSellersList,
   getSellerDetails,
-  saveFcmToken
+  saveFcmToken,
+  addAddress,
+  getAddresses,
+  sendOtpToBuyerBeforeOrder,
+  verifyOtpBeforeOrder
 };

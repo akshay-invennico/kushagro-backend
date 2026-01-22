@@ -15,7 +15,6 @@ const paymentSchema = mongoose.Schema(
     },
     reference: {
       type: String,
-      required: true,
       index: true,
     },
     originalReference: {
@@ -30,6 +29,10 @@ const paymentSchema = mongoose.Schema(
       type: Types.ObjectId,
       required: true,
     },
+    paymentMode: {
+      type: String,
+      enum: ['CASH', 'FLUTTERWAVE'],
+    },
     status: {
       type: String,
       required: true,
@@ -43,7 +46,7 @@ const paymentSchema = mongoose.Schema(
         'Refund completed',
         'Refund failed',
       ],
-      index: true, // Added index for status queries
+      index: true,
     },
     amount: {
       type: String,
@@ -51,8 +54,6 @@ const paymentSchema = mongoose.Schema(
     },
     currency: {
       type: String,
-      required: true,
-      default: 'UGX',
     },
     originalCurrency: {
       type: String,
