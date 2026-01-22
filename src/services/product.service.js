@@ -1,5 +1,6 @@
+const mongoose = require('mongoose');
 const httpStatus = require('http-status');
-const { Product, User } = require('../models');
+const { Product, User, Rating } = require('../models');
 const ApiError = require('../utils/ApiError');
 const notificationService = require('./notification.service');
 const Commission = require('../models/commission.model');
@@ -38,48 +39,136 @@ const queryProducts = async (filter, options) => {
   const page = options.page ? parseInt(options.page, 10) : 1;
   const skip = (page - 1) * limit;
 
-  let sort = { createdAt: -1 };
-  if (options.priceOrder === 'highToLow') {
-    sort = { price: -1 };
+  const matchStage = {};
+
+  if (filter.name) {
+    matchStage.name = { $regex: filter.name, $options: 'i' };
+  }
+  if (filter.status) {
+    matchStage.status = filter.status;
+  }
+  if (filter.categoryId) {
+    matchStage.categoryId = new mongoose.Types.ObjectId(filter.categoryId);
+  }
+  if (filter.sellerId) {
+    matchStage.sellerId = new mongoose.Types.ObjectId(filter.sellerId);
+  }
+  if (filter.price) {
+    matchStage.price = filter.price;
   }
 
-  if (options.priceOrder === 'lowToHigh') {
-    sort = { price: 1 };
+  if (filter.lat && filter.long) {
+    const lat = parseFloat(filter.lat);
+    const lng = parseFloat(filter.long);
+    const radiusInDegrees = 0.5; // Roughly 50km
+
+    matchStage['location.lat'] = { $gte: lat - radiusInDegrees, $lte: lat + radiusInDegrees };
+    matchStage['location.lng'] = { $gte: lng - radiusInDegrees, $lte: lng + radiusInDegrees };
   }
 
-  if (!options.priceOrder && options.sortBy) {
-    sort = {};
-    options.sortBy.split(',').forEach((sortOption) => {
-      const [key, order] = sortOption.split(':');
-      sort[key] = order === 'desc' ? -1 : 1;
-    });
+  const pipeline = [
+    { $match: matchStage },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'sellerId',
+        foreignField: '_id',
+        as: 'seller',
+      },
+    },
+    { $unwind: '$seller' },
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'categoryId',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: 'ratings',
+        localField: 'sellerId',
+        foreignField: 'sellerId',
+        as: 'sellerRatings',
+      },
+    },
+    {
+      $addFields: {
+        sellerReviews: {
+          totalReviews: { $size: '$sellerRatings' },
+          averageRating: {
+            $cond: [{ $eq: [{ $size: '$sellerRatings' }, 0] }, 0, { $avg: '$sellerRatings.rating' }],
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        description: 1,
+        price: 1,
+        images: 1,
+        location: 1,
+        status: 1,
+        extraFields: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        category: { _id: 1, name: 1, slug: 1 },
+        sellerId: {
+          _id: '$seller._id',
+          name: '$seller.name',
+          email: '$seller.email',
+          phone: '$seller.phone',
+          profile: '$seller.profile',
+          bio: '$seller.bio',
+          identityVerificationStatus: '$seller.identityVerificationStatus',
+          totalReviews: '$sellerReviews.totalReviews',
+          averageRating: '$sellerReviews.averageRating',
+        },
+      },
+    },
+  ];
+
+  let sortStage = { createdAt: -1 };
+  if (options.sortBy) {
+    if (options.sortBy === 'newest') {
+      sortStage = { createdAt: -1 };
+    } else if (options.sortBy === 'trending') {
+      sortStage = { createdAt: -1 };
+    } else {
+      const [key, order] = options.sortBy.split(':');
+      if (key && order) {
+        sortStage = { [key]: order === 'desc' ? -1 : 1 };
+      }
+    }
+  } else if (options.priceOrder) {
+    if (options.priceOrder === 'highToLow') sortStage = { price: -1 };
+    if (options.priceOrder === 'lowToHigh') sortStage = { price: 1 };
   }
 
-  const [totalResults, results] = await Promise.all([
-    Product.countDocuments(filter),
-    Product.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate({
-        path: 'sellerId',
-        select: '_id name profile email phone',
-      })
-      .populate({
-        path: 'categoryId',
-        select: '_id name slug',
-      })
-      .lean(),
-  ]);
+  pipeline.push({ $sort: sortStage });
 
-  const totalPages = Math.ceil(totalResults / limit);
+  const facetStage = {
+    $facet: {
+      metadata: [{ $count: 'total' }, { $addFields: { page } }],
+      data: [{ $skip: skip }, { $limit: limit }],
+    },
+  };
+  pipeline.push(facetStage);
+
+  const result = await Product.aggregate(pipeline);
+
+  const metadata = result[0].metadata[0] || { total: 0, page: 1 };
+  const products = result[0].data;
 
   return {
-    results,
-    page,
+    results: products,
+    page: metadata.page,
     limit,
-    totalPages,
-    totalResults,
+    totalPages: Math.ceil(metadata.total / limit),
+    totalResults: metadata.total,
   };
 };
 
@@ -89,13 +178,33 @@ const queryProducts = async (filter, options) => {
  * @returns {Promise<Product>}
  */
 const getProductById = async (id) => {
-  const product = await Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug').lean();
+  const product = await Product.findById(id)
+    .populate('sellerId', 'name email profile bio identityVerificationStatus phone')
+    .populate('categoryId', 'name slug')
+    .lean();
 
   if (!product) {
     return null;
   }
 
-  // 🔹 Fetch commission or fallback to defaults
+  const ratingsStats = await Rating.aggregate([
+    { $match: { sellerId: product.sellerId._id } },
+    {
+      $group: {
+        _id: null,
+        averageRating: { $avg: '$rating' },
+        totalReviews: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const sellerReviews = ratingsStats.length > 0 ? ratingsStats[0] : { averageRating: 0, totalReviews: 0 };
+
+  if (product.sellerId) {
+    product.sellerId.averageRating = sellerReviews.averageRating;
+    product.sellerId.totalReviews = sellerReviews.totalReviews;
+  }
+
   const commission = (await Commission.findOne().sort({ createdAt: -1 }).lean()) || {
     taxPercentage: 0,
     isPlatformChargesApplied: false,
@@ -106,9 +215,7 @@ const getProductById = async (id) => {
   };
 
   const basePrice = Number(product.price || 0);
-
   const taxAmount = commission.taxPercentage > 0 ? (basePrice * commission.taxPercentage) / 100 : 0;
-
   const platformChargeAmount = commission.isPlatformChargesApplied ? Number(commission.platformCharges || 0) : 0;
 
   const commissionAmount =
@@ -147,7 +254,7 @@ const getProductById = async (id) => {
  * @returns {Promise<Product>}
  */
 const getProductBySellerId = async (sellerId) => {
-  return Product.find(sellerId);
+  return queryProducts({ sellerId }, {});
 };
 
 /**

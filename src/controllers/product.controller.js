@@ -24,6 +24,12 @@ const createProduct = catchAsync(async (req, res) => {
 const getProducts = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['name', 'categoryId', 'status']);
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'priceOrder']);
+  const { lat, long } = req.query;
+
+  if (lat && long) {
+    filter.lat = lat;
+    filter.long = long;
+  }
 
   const { role } = req.user;
   const userId = req.user._id;
@@ -75,12 +81,28 @@ const getProduct = catchAsync(async (req, res) => {
 });
 
 const getProductsBySellerId = catchAsync(async (req, res) => {
-  const sellerId = req.params;
-  const products = await productService.getProductBySellerId(sellerId);
+  const { sellerId } = req.params;
+  const filter = pick(req.query, ['name', 'categoryId', 'status']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page', 'priceOrder']);
+
+  filter.sellerId = sellerId;
+  if (!filter.status) {
+    filter.status = 'ACTIVE';
+  }
+
+  const result = await productService.queryProducts(filter, options);
+
   res.status(httpStatus.OK).send({
     success: true,
     message: 'Seller products fetched successfully',
-    data: products,
+    data: result.results,
+    meta: {
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+      totalResults: result.totalResults,
+    },
+    error: null,
   });
 });
 
