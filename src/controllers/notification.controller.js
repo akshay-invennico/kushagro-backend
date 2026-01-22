@@ -77,9 +77,31 @@ const deleteNotification = catchAsync(async (req, res) => {
   });
 });
 
+const sendNotification = catchAsync(async (req, res) => {
+  const { title, body, userType, notificationType } = req.body;
+  const result = await notificationService.sendPushNotificationByRole({
+    title,
+    body,
+    userType,
+    notificationType,
+  });
+
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Notification processed successfully',
+    data: {
+      sent: result.success,
+      failed: result.failed,
+    },
+    meta: null,
+    error: null,
+  });
+});
+
 module.exports = {
   getNotifications,
   markRead,
   markAllRead,
   deleteNotification,
+  sendNotification,
 };

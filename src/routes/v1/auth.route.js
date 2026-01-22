@@ -21,6 +21,7 @@ router.patch(
   authController.completeRegistration
 );
 router.post('/verify/forgot/otp', validate(authValidation.verifyOtp), authController.verifyForgotOtp);
+router.post('/ssologin', validate(authValidation.firebaseSSOLogin), authController.firebaseSSOLogin);
 
 module.exports = router;
 

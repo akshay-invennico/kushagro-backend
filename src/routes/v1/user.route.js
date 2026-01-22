@@ -31,6 +31,7 @@ router
 router.get('/seller', userController.getSellers);
 router.get('/sellerdata/:sellerId', userController.getSellerDetails);
 router.route('/:userId/reports').get(auth('manageUsers'), userController.getFraudReports);
+router.patch('/savefcm/:userId', validate(userValidation.saveFcmToken), userController.saveFcmToken);
 
 module.exports = router;
 

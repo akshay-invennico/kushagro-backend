@@ -695,6 +695,22 @@ const getFraudReportsByUserId = async (userId, options) => {
   return reports;
 };
 
+
+const saveFcmToken = async ({userId,fcmToken}) => {
+   const user = await User.findByIdAndUpdate(
+    userId,
+    { fcmToken },
+    { new: true }
+  );
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  return {
+    message: 'FCM token saved successfully',
+  };
+}
 module.exports = {
   createUser,
   queryUsers,
@@ -714,4 +730,5 @@ module.exports = {
   getSellersList,
   getSellerDetails,
   getFraudReportsByUserId,
+  saveFcmToken
 };

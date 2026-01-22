@@ -111,6 +111,15 @@ const getResetPasswordLink = {
     userId: Joi.string().custom(objectId),
   }),
 };
+const saveFcmToken = {
+  params: Joi.object().keys({
+    userId: Joi.string().custom(objectId).required(),
+  }),
+
+  body: Joi.object().keys({
+    fcmToken: Joi.string().trim().required(),
+  }),
+};
 
 module.exports = {
   createUser,
@@ -124,4 +133,5 @@ module.exports = {
   suspendUser,
   reactivateUser,
   getResetPasswordLink,
+  saveFcmToken,
 };

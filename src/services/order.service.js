@@ -485,7 +485,7 @@ const getOrderById = async ({ orderId }) => {
           _id: '$seller._id',
           name: '$seller.name',
           email: '$seller.email',
-          profile: '$seller.profile'
+          profile: '$seller.profile',
         },
 
         product: {
@@ -494,6 +494,11 @@ const getOrderById = async ({ orderId }) => {
           price: '$product.price',
           images: '$product.images',
           extraFields: '$product.extraFields',
+          location: {
+    address: '$product.location.address',
+    lat: '$product.location.lat',
+    lng: '$product.location.lng',
+  },
         },
 
         category: {

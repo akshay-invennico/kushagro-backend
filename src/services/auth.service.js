@@ -8,7 +8,8 @@ const { generateOtp } = require('../utils/generateOtp');
 const emailService = require('./email.service');
 const smsService = require('./sms.service');
 const notificationService = require('./notification.service');
-
+const admin = require('../config/firebase');
+const User = require('../models/user.model')
 /**
  * Login with username and password
  * @param {string} email
@@ -264,6 +265,58 @@ const verifyForgotOtp = async (body) => {
   return user;
 };
 
+
+
+/**
+ * Firebase SSO Login (Google / Apple)
+ */
+const firebaseSSOLogin = async ({ idToken }) => {
+  // 1. Verify Firebase token
+  const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+  const {
+    email,
+    name,
+    picture,
+    uid,
+    firebase: firebaseInfo,
+  } = decodedToken;
+
+  const provider = firebaseInfo?.sign_in_provider;
+
+
+  if (!email) {
+    throw new Error('Email not found in Firebase token');
+  }
+
+  let user = await User.findOne({ email });
+
+ 
+  if (!user) {
+    user = await User.create({
+      name: name || 'User',
+      email,
+      profile: picture || null,
+      password: uid, 
+      isVerified: false,
+      isAccountVerified: false,
+      primaryKey: 'email',
+    });
+  }
+
+  const tokens = await tokenService.generateAuthTokens(user);
+
+  return {
+    user,
+    tokens,
+    provider,
+  };
+};
+
+
+
+
+
 module.exports = {
   loginUserWithEmailAndPassword,
   logout,
@@ -275,4 +328,6 @@ module.exports = {
   loginUserWithPhoneAndPassword,
   loginAdminWithEmailAndPassword,
   verifyForgotOtp,
+  firebaseSSOLogin,
+
 };
