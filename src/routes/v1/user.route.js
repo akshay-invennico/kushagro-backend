@@ -32,7 +32,10 @@ router.get('/seller', userController.getSellers);
 router.get('/sellerdata/:sellerId', userController.getSellerDetails);
 router.route('/:userId/reports').get(auth('manageUsers'), userController.getFraudReports);
 router.patch('/savefcm/:userId', validate(userValidation.saveFcmToken), userController.saveFcmToken);
-
+router.patch('/address/:userId', userController.addBuyerAddress);
+router.get('/address/:userId', userController.getBuyerAddresses);
+router.patch('/sendotp/buyer/:userId', userController.sendOtpToBuyerBeforeOrder);
+router.post('/verifyotp/buyer', userController.verifyOtpBeforeOrder);
 module.exports = router;
 
 /**

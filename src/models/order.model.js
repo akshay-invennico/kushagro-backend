@@ -73,6 +73,14 @@ const orderSchema = mongoose.Schema(
     OTP: {
       type: Number,
     },
+    otpVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otpSent: {
+      type: Boolean,
+      default: false,
+    },
     otpExpiresAt: {
       type: Date,
     },
