@@ -14,8 +14,12 @@ const reportSchema = mongoose.Schema(
       required: true,
     },
     reason: {
-      type: String,
+      type: [String],
       required: true,
+      validate: {
+        validator: (v) => Array.isArray(v) && v.length > 0,
+        message: 'At least one reason is required',
+      },
     },
     image: {
       type: String,

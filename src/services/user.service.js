@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
 const mongoose = require('mongoose');
-const { User, Report, Order } = require('../models');
+const { User, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
 const Payment = require('../models/payment.model');
 const tokenService = require('./token.service');
@@ -247,30 +247,6 @@ const deleteAccount = async (userId, password) => {
   return user;
 };
 
-/**
- * Report a user
- * @param {ObjectId} reporterId
- * @param {ObjectId} reportedId
- * @param {Object} reportBody
- * @returns {Promise<Report>}
- */
-const reportUser = async (reporterId, reportedId, reportBody) => {
-  const reportedUser = await getUserById(reportedId);
-  if (!reportedUser) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  const report = await Report.create({
-    reporterId,
-    reportedId,
-    ...reportBody,
-  });
-
-  reportedUser.isReported = true;
-  await reportedUser.save();
-
-  return report;
-};
 
 
 const getMyTransactions = async (userId, query) => {
@@ -683,17 +659,6 @@ const getSellerDetails = async (sellerId) => {
 
   return result;
 };
-/**
- * Get fraud reports by user id
- * @param {ObjectId} userId
- * @param {Object} options
- * @returns {Promise<QueryResult>}
- */
-const getFraudReportsByUserId = async (userId, options) => {
-  const filter = { reportedId: userId };
-  const reports = await Report.paginate(filter, { ...options, populate: 'reporterId' });
-  return reports;
-};
 
 
 const saveFcmToken = async ({userId,fcmToken}) => {
@@ -722,13 +687,11 @@ module.exports = {
   getUserByEmailOrPhone,
   changePassword,
   deleteAccount,
-  reportUser,
   getMyTransactions,
   suspendUserById,
   reactivateUserById,
   getResetPasswordLink,
   getSellersList,
   getSellerDetails,
-  getFraudReportsByUserId,
   saveFcmToken
 };

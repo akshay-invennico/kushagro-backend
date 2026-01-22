@@ -57,22 +57,6 @@ const deleteAccount = catchAsync(async (req, res) => {
   });
 });
 
-const reportUser = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-
-  await userService.reportUser(req.user._id, userId, {
-    ...req.body,
-  });
-
-  res.status(httpStatus.OK).json({
-    success: true,
-    message: 'User reported successfully',
-    data: null,
-    meta: {},
-    error: null,
-  });
-});
-
 const getMyTransactions = async (req, res) => {
   const userId = req.user._id;
 
@@ -146,12 +130,6 @@ const getSellerDetails = async (req, res) => {
     data: result,
   });
 };
-const getFraudReports = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const data = await userService.getFraudReportsByUserId(userId, options);
-  res.send(data);
-});
 
 const saveFcmToken = catchAsync(async (req, res) => {
   const { userId } = req.params;
@@ -174,13 +152,11 @@ module.exports = {
   updateUser,
   changePassword,
   deleteAccount,
-  reportUser,
   getMyTransactions,
   suspendUser,
   reactivateUser,
   getResetPasswordLink,
   getSellers,
   getSellerDetails,
-  getFraudReports,
   saveFcmToken,
 };

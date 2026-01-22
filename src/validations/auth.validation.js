@@ -31,7 +31,8 @@ const verifyOtp = {
 
 const login = {
   body: Joi.object().keys({
-    email: Joi.string().required(),
+    phone: Joi.string(),
+    email: Joi.string(),
     password: Joi.string().required(),
   }),
 };
