@@ -2,6 +2,7 @@ const httpStatus = require('http-status');
 const { Product, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const notificationService = require('./notification.service');
+const Commission = require('../models/commission.model');
 
 /**
  * Create a product
@@ -88,7 +89,56 @@ const queryProducts = async (filter, options) => {
  * @returns {Promise<Product>}
  */
 const getProductById = async (id) => {
-  return Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug').lean();
+  const product = await Product.findById(id).populate('sellerId', 'name email').populate('categoryId', 'name slug').lean();
+
+  if (!product) {
+    return null;
+  }
+
+  // 🔹 Fetch commission or fallback to defaults
+  const commission = (await Commission.findOne().sort({ createdAt: -1 }).lean()) || {
+    taxPercentage: 0,
+    isPlatformChargesApplied: false,
+    platformCharges: 0,
+    isCommissionEnabled: false,
+    commissionPercentage: 0,
+    minimumOrderValue: 0,
+  };
+
+  const basePrice = Number(product.price || 0);
+
+  const taxAmount = commission.taxPercentage > 0 ? (basePrice * commission.taxPercentage) / 100 : 0;
+
+  const platformChargeAmount = commission.isPlatformChargesApplied ? Number(commission.platformCharges || 0) : 0;
+
+  const commissionAmount =
+    commission.isCommissionEnabled && basePrice >= commission.minimumOrderValue
+      ? (basePrice * commission.commissionPercentage) / 100
+      : 0;
+
+  const totalAmount = Number((basePrice + taxAmount + platformChargeAmount + commissionAmount).toFixed(2));
+
+  return {
+    ...product,
+
+    pricing: {
+      basePrice,
+      tax: {
+        percentage: commission.taxPercentage,
+        amount: Number(taxAmount.toFixed(2)),
+      },
+      platformCharges: {
+        applied: commission.isPlatformChargesApplied,
+        amount: platformChargeAmount,
+      },
+      commission: {
+        enabled: commission.isCommissionEnabled,
+        percentage: commission.commissionPercentage,
+        amount: Number(commissionAmount.toFixed(2)),
+      },
+      totalAmount,
+    },
+  };
 };
 
 /**

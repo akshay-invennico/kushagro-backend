@@ -9,6 +9,7 @@ const ApiError = require('../utils/ApiError');
 const config = require('../config/config');
 const payment = require('../config/payment');
 const mongoose = require('mongoose');
+const Commission = require('../models/commission.model');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { sendVerificationEmail } = require('./email.service');
@@ -38,13 +39,24 @@ const createOrder = async (payload) => {
     throw new Error('Invalid buyer or seller');
   }
 
-  const orderNumber = generateOrderNumber();
-  const subTotal = quantity * price;
-  const taxRate = Number(config.order.tax);
-  const platformChargePer = Number(config.order.platformCharges);
-  const taxAmount = (subTotal * taxRate) / 100;
-  const platformCharges = (subTotal * platformChargePer) / 100;
-  const payableAmount = subTotal + taxAmount + platformCharges;
+ const commission = await Commission.findOne();
+
+const orderNumber = generateOrderNumber();
+const subTotal = quantity * price;
+
+const taxRate = commission?.commissionPercentage || 0;
+const platformChargePer = commission?.platformCharges || 0;
+
+const taxAmount = commission?.isCommissionEnabled
+  ? (subTotal * taxRate) / 100
+  : 0;
+
+const platformCharges = commission?.isPlatformChargesApplied
+  ? (subTotal * platformChargePer) / 100
+  : 0;
+
+const payableAmount = subTotal + taxAmount + platformCharges;
+
 
   const order = await Order.create({
     orderNumber,
@@ -61,39 +73,38 @@ const createOrder = async (payload) => {
     status: 'ONGOING',
   });
 
-  const reference = `FLW_${Date.now()}_${order._id}`;
+  // const reference = `FLW_${Date.now()}_${order._id}`;
 
-  const response = await payment.post('/payments', {
-    tx_ref: reference,
-    amount: payableAmount,
-    currency,
-    redirect_url: process.env.FLUTTERWAVE_REDIRECT_URL || 'https://yourapp.com/payment/callback',
-    payment_options: 'card,mobilemoney,banktransfer',
-    customer: {
-      email: checkBuyer.email,
-      name: checkBuyer.name || 'Buyer',
-    },
-    meta: {
-      orderId: order._id,
-      buyerId,
-      sellerId,
-      paymentType: 'PAYIN',
-    },
-    customizations: {
-      title: 'Order Payment',
-      description: `Payment for order ${order.orderNumber}`,
-    },
-  });
+  // const response = await payment.post('/payments', {
+  //   tx_ref: reference,
+  //   amount: payableAmount,
+  //   currency,
+  //   redirect_url: process.env.FLUTTERWAVE_REDIRECT_URL || 'https://yourapp.com/payment/callback',
+  //   payment_options: 'card,mobilemoney,banktransfer',
+  //   customer: {
+  //     email: checkBuyer.email,
+  //     name: checkBuyer.name || 'Buyer',
+  //   },
+  //   meta: {
+  //     orderId: order._id,
+  //     buyerId,
+  //     sellerId,
+  //     paymentType: 'PAYIN',
+  //   },
+  //   customizations: {
+  //     title: 'Order Payment',
+  //     description: `Payment for order ${order.orderNumber}`,
+  //   },
+  // });
 
   await Payment.create({
     type: 'PayIn',
+    paymentMode:'CASH',
     orderId: order._id,
-    reference,
     buyerId,
     sellerId,
     status: 'Pending',
     amount: payableAmount.toString(),
-    currency,
     date: new Date().toISOString(),
   });
   // notification for seller
@@ -116,8 +127,6 @@ const createOrder = async (payload) => {
 
   return {
     order,
-    authorizationUrl: response.data.data.link,
-    reference,
   };
 };
 
@@ -552,6 +561,7 @@ const sendOtpToBuyer = async (payload) => {
   }
 
   order.OTP = otp;
+  order.otpSent=true;
   order.otpExpiresAt = otpExpiry;
   await order.save();
 
@@ -607,25 +617,29 @@ const verifyOtpUpdateOrder = async (payload) => {
     };
   }
 
-  const successfulPayment = await Payment.findOne({
-    orderId,
-    type: 'PayIn',
-    status: 'Payment success',
-  });
+  // const successfulPayment = await Payment.findOne({
+  //   orderId,
+  //   type: 'PayIn',
+  //   status: 'Payment success',
+  // });
 
-  if (!successfulPayment) {
-    return {
-      success: false,
-      message: 'Payment not completed',
-    };
-  }
+  // if (!successfulPayment) {
+  //   return {
+  //     success: false,
+  //     message: 'Payment not completed',
+  //   };
+  // }
 
   // Update order
   order.status = 'COMPLETE';
   order.OTP = null;
+  order.otpVerified=true;
   order.otpExpiresAt = null;
   order.deliveryDate = new Date();
   await order.save();
+
+  //update the payment status
+  await Payment.findOneAndUpdate({orderId:orderId,type:'PayIn'},{$set:{status:'Payment success'}},{ new: true })
 
   // notification for buyer
   await notificationService.createNotification({

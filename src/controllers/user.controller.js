@@ -168,6 +168,55 @@ const saveFcmToken = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Controller to add a new address
+ */
+const addBuyerAddress = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const addressData = req.body;
+
+  const updatedAddresses = await userService.addAddress(userId, addressData);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Address added successfully',
+    data: updatedAddresses,
+  });
+});
+
+const getBuyerAddresses = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+
+  const addresses = await userService.getAddresses(userId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: addresses,
+  });
+});
+
+const sendOtpToBuyerBeforeOrder = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+
+  const result = await userService.sendOtpToBuyerBeforeOrder(userId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: result.message,
+  });
+});
+
+const verifyOtpBeforeOrder = catchAsync(async (req, res) => {
+  const { userId, otp } = req.body;
+
+  const result = await userService.verifyOtpBeforeOrder({
+    userId,
+    otp,
+  });
+
+  res.status(httpStatus.OK).json(result);
+});
+
 module.exports = {
   getUser,
   getUsers,
@@ -183,4 +232,8 @@ module.exports = {
   getSellerDetails,
   getFraudReports,
   saveFcmToken,
+  addBuyerAddress,
+  getBuyerAddresses,
+  sendOtpToBuyerBeforeOrder,
+  verifyOtpBeforeOrder,
 };
