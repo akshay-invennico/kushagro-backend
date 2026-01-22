@@ -96,7 +96,7 @@ const orderSchema = mongoose.Schema(
       ref: 'Product',
     },
     deliveryDate: {
-      type: Date
+      type: Date,
     },
     isFlagged: {
       type: Boolean,

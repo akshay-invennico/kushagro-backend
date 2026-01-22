@@ -85,7 +85,7 @@ const verifyOrderOtp = async (req, res) => {
     const result = await orderService.verifyOtpUpdateOrder(req.body);
 
     res.status(httpStatus.OK).json({
-      success: result.success, 
+      success: result.success,
       message: result.message,
     });
   } catch (error) {
@@ -95,7 +95,6 @@ const verifyOrderOtp = async (req, res) => {
     });
   }
 };
-
 
 const cancelOrder = catchAsync(async (req, res) => {
   const data = await orderService.cancelOrder(req.body);

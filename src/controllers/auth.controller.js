@@ -179,6 +179,24 @@ const verifyForgotOtp = catchAsync(async (req, res) => {
   });
 });
 
+const firebaseSSOLogin = catchAsync(async (req, res) => {
+  const { idToken } = req.body;
+
+  const result = await authService.firebaseSSOLogin({ idToken });
+
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Login successful',
+    data: {
+      user: result.user,
+      tokens: result.tokens,
+      provider: result.provider,
+    },
+    meta: null,
+    error: null,
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -190,4 +208,5 @@ module.exports = {
   verifyOtp,
   completeRegistration,
   verifyForgotOtp,
+  firebaseSSOLogin,
 };

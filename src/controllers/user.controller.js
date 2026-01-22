@@ -153,6 +153,21 @@ const getFraudReports = catchAsync(async (req, res) => {
   res.send(data);
 });
 
+const saveFcmToken = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const { fcmToken } = req.body;
+
+  const result = await userService.saveFcmToken({
+    userId,
+    fcmToken,
+  });
+
+  return res.status(httpStatus.OK).json({
+    success: true,
+    data: result,
+  });
+});
+
 module.exports = {
   getUser,
   getUsers,
@@ -167,4 +182,5 @@ module.exports = {
   getSellers,
   getSellerDetails,
   getFraudReports,
+  saveFcmToken,
 };

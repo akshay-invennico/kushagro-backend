@@ -35,7 +35,9 @@ const userSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
-
+    fcmToken: {
+      type: String,
+    },
     primaryKey: {
       type: String,
       enum: ['phone', 'email'],
