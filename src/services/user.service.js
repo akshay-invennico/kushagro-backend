@@ -500,7 +500,7 @@ const getSellersList = async (query) => {
           $cond: [{ $eq: ['$isAccountVerified', true] }, 'Verified', 'Pending'],
         },
         status: {
-          $cond: [{ $eq: ['$isBlocked', true] }, 'Suspended', 'Active'],
+          $cond: [{ $eq: ['$isSuspended', true] }, 'Suspended', 'Active'],
         },
       },
     },
@@ -517,6 +517,7 @@ const getSellersList = async (query) => {
         earnings: 1,
         idStatus: 1,
         status: 1,
+        isSuspended: 1,
       },
     },
 

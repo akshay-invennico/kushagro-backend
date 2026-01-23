@@ -57,7 +57,6 @@ const queryProducts = async (filter, options) => {
     matchStage.price = filter.price;
   }
 
-
   if (options.buyerId) {
     const blockedSellers = await User.find({ blockedUsers: options.buyerId }).select('_id');
     const blockedSellerIds = blockedSellers.map((user) => user._id);

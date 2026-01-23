@@ -35,7 +35,6 @@ router.get('/address/:userId', userController.getBuyerAddresses);
 router.patch('/sendotp/buyer/:userId', userController.sendOtpToBuyerBeforeOrder);
 router.post('/verifyotp/buyer', userController.verifyOtpBeforeOrder);
 
-
 router.post('/:userId/block', auth('manageUsers'), userController.blockBuyer);
 router.post('/:userId/unblock', auth('manageUsers'), userController.unblockBuyer);
 router.get('/blocked', auth('manageUsers'), userController.getBlockedUsers);

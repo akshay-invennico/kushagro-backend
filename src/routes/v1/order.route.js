@@ -14,6 +14,7 @@ const {
   flagOrders,
   resolveOrderFlags,
   getSellerOrders,
+  getBuyerOrders,
 } = require('../../controllers/order.controller');
 
 const router = express.Router();
@@ -28,6 +29,7 @@ router.patch('/cancel', validate(orderValidation.cancelOrder), cancelOrder);
 router.patch('/markflag', flagOrders);
 router.patch('/resolveflag', resolveOrderFlags);
 router.get('/seller/:sellerId', getSellerOrders);
+router.get('/buyer/:buyerId', getBuyerOrders);
 module.exports = router;
 
 /**

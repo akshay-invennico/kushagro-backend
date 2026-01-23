@@ -16,8 +16,6 @@ const getTickets = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['status']);
   filter.isDeleted = false;
 
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-
   if (req.user.role === 'BUYER' || req.user.role === 'SELLER') {
     filter.user = req.user.id;
   }
@@ -38,11 +36,13 @@ const getTickets = catchAsync(async (req, res) => {
     }
   }
 
-  const result = await ticketService.queryTickets(filter, options);
+  const result = await ticketService.getAllTickets(filter, req.query);
 
   res.json({
     success: true,
-    data: result,
+    message: 'Tickets fetched successfully',
+    data: result.data,
+    meta: result.meta,
   });
 });
 

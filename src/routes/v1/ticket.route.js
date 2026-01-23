@@ -8,7 +8,7 @@ router.route('/').post(auth(), ticketController.createTicket).get(auth(), ticket
 
 router.route('/:ticketId').get(auth(), ticketController.getTicketDetails).delete(auth(), ticketController.deleteTicket);
 
-router.route('/status/:ticketId').patch(auth('ADMIN'), ticketController.updateTicketStatus);
+router.route('/status/:ticketId').patch(auth(), ticketController.updateTicketStatus);
 
 module.exports = router;
 

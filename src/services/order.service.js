@@ -32,30 +32,30 @@ const createOrder = async (payload) => {
 
   const { price } = productDetails;
   const { sellerId } = productDetails;
-   const quantity=1;
+  const quantity = 1;
   const checkBuyer = await User.findOne({ _id: buyerId, role: 'BUYER' });
   const checkSeller = await User.findOne({ _id: sellerId, role: 'SELLER' });
   if (!checkBuyer || !checkSeller) {
     throw new Error('Invalid buyer or seller');
   }
 
- const commission = await Commission.findOne();
+  const commission = await Commission.findOne();
 
-const orderNumber = generateOrderNumber();
-const subTotal = quantity * price;
+  const orderNumber = generateOrderNumber();
+  const subTotal = quantity * price;
 
-const taxRate = commission?.commissionPercentage || 0;
-const platformChargePer = commission?.platformCharges || 0;
+  const taxRate = commission?.commissionPercentage || 0;
+  const platformChargePer = commission?.platformCharges || 0;
 
-const taxAmount = commission?.isCommissionEnabled
-  ? (subTotal * taxRate) / 100
-  : 0;
+  const taxAmount = commission?.isCommissionEnabled
+    ? (subTotal * taxRate) / 100
+    : 0;
 
-const platformCharges = commission?.isPlatformChargesApplied
-  ? (subTotal * platformChargePer) / 100
-  : 0;
+  const platformCharges = commission?.isPlatformChargesApplied
+    ? (subTotal * platformChargePer) / 100
+    : 0;
 
-const payableAmount = subTotal + taxAmount + platformCharges;
+  const payableAmount = subTotal + taxAmount + platformCharges;
 
 
   const order = await Order.create({
@@ -99,7 +99,7 @@ const payableAmount = subTotal + taxAmount + platformCharges;
 
   await Payment.create({
     type: 'PayIn',
-    paymentMode:'CASH',
+    paymentMode: 'CASH',
     orderId: order._id,
     buyerId,
     sellerId,
@@ -320,19 +320,19 @@ const getAllOrders = async (userId, query) => {
       buyer:
         user.role === 'ADMIN'
           ? {
-              name: '$buyer.name',
-              email: '$buyer.email',
-              profile: '$buyer.profile',
-            }
+            name: '$buyer.name',
+            email: '$buyer.email',
+            profile: '$buyer.profile',
+          }
           : '$$REMOVE',
 
       seller:
         user.role === 'ADMIN'
           ? {
-              name: '$seller.name',
-              email: '$seller.email',
-              profile: '$seller.profile',
-            }
+            name: '$seller.name',
+            email: '$seller.email',
+            profile: '$seller.profile',
+          }
           : '$$REMOVE',
     },
   });
@@ -504,10 +504,10 @@ const getOrderById = async ({ orderId }) => {
           images: '$product.images',
           extraFields: '$product.extraFields',
           location: {
-    address: '$product.location.address',
-    lat: '$product.location.lat',
-    lng: '$product.location.lng',
-  },
+            address: '$product.location.address',
+            lat: '$product.location.lat',
+            lng: '$product.location.lng',
+          },
         },
 
         category: {
@@ -561,7 +561,7 @@ const sendOtpToBuyer = async (payload) => {
   }
 
   order.OTP = otp;
-  order.otpSent=true;
+  order.otpSent = true;
   order.otpExpiresAt = otpExpiry;
   await order.save();
 
@@ -633,13 +633,13 @@ const verifyOtpUpdateOrder = async (payload) => {
   // Update order
   order.status = 'COMPLETE';
   order.OTP = null;
-  order.otpVerified=true;
+  order.otpVerified = true;
   order.otpExpiresAt = null;
   order.deliveryDate = new Date();
   await order.save();
 
   //update the payment status
-  await Payment.findOneAndUpdate({orderId:orderId,type:'PayIn'},{$set:{status:'Payment success'}},{ new: true })
+  await Payment.findOneAndUpdate({ orderId: orderId, type: 'PayIn' }, { $set: { status: 'Payment success' } }, { new: true })
 
   // notification for buyer
   await notificationService.createNotification({
@@ -867,6 +867,16 @@ const getSellerOrders = async (sellerId, query) => {
 
     {
       $lookup: {
+        from: 'categories',
+        localField: 'product.categoryId',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    { $unwind: '$category' },
+
+    {
+      $lookup: {
         from: 'users',
         localField: 'buyerId',
         foreignField: '_id',
@@ -878,13 +888,14 @@ const getSellerOrders = async (sellerId, query) => {
     {
       $project: {
         orderId: '$_id',
+        orderNumber: '$orderNumber',
         orderDate: '$createdAt',
         amount: '$totalAmount',
         status: '$status',
 
         product: {
           name: '$product.name',
-          category: '$product.category',
+          category: '$category.name',
           image: { $arrayElemAt: ['$product.images', 0] },
         },
 
@@ -927,7 +938,97 @@ const getSellerOrders = async (sellerId, query) => {
 
 
 
+const getBuyerOrders = async (buyerId, query) => {
+  const page = Math.max(parseInt(query.page) || 1, 1);
+  const limit = Math.max(parseInt(query.limit) || 10, 1);
+  const skip = (page - 1) * limit;
 
+  const matchStage = {
+    buyerId: new mongoose.Types.ObjectId(buyerId),
+  };
+
+  const pipeline = [
+    { $match: matchStage },
+
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'productId',
+        foreignField: '_id',
+        as: 'product',
+      },
+    },
+    { $unwind: '$product' },
+
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'product.categoryId',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    { $unwind: '$category' },
+
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'sellerId',
+        foreignField: '_id',
+        as: 'seller',
+      },
+    },
+    { $unwind: '$seller' },
+
+    {
+      $project: {
+        orderId: '$_id',
+        orderNumber: '$orderNumber',
+        orderDate: '$createdAt',
+        amount: '$totalAmount',
+        status: '$status',
+
+        product: {
+          name: '$product.name',
+          category: '$category.name',
+          image: { $arrayElemAt: ['$product.images', 0] },
+        },
+
+        seller: {
+          name: '$seller.name',
+          email: '$seller.email',
+          profile: '$seller.profile',
+        },
+      },
+    },
+
+    {
+      $facet: {
+        data: [
+          { $sort: { orderDate: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        total: [{ $count: 'count' }],
+      },
+    },
+  ];
+
+  const result = await Order.aggregate(pipeline);
+
+  const orders = result[0].data;
+  const totalResults = result[0].total[0]?.count || 0;
+
+  return {
+    data: orders,
+    meta: {
+      page,
+      limit,
+      totalResults,
+      totalPages: Math.ceil(totalResults / limit),
+    },
+  };
+};
 
 
 module.exports = {
@@ -940,5 +1041,6 @@ module.exports = {
   cancelOrder,
   flagOrders,
   resolveFlags,
-  getSellerOrders
+  getSellerOrders,
+  getBuyerOrders
 };

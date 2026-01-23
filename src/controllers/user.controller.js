@@ -195,7 +195,6 @@ const verifyOtpBeforeOrder = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json(result);
 });
 
-
 const blockBuyer = catchAsync(async (req, res) => {
   const { userId } = req.params;
   const sellerId = req.user._id;
@@ -221,7 +220,6 @@ const unblockBuyer = catchAsync(async (req, res) => {
     data: result,
   });
 });
-
 
 const getBlockedUsers = catchAsync(async (req, res) => {
   const sellerId = req.user._id;
