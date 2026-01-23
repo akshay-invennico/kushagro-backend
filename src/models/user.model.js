@@ -16,8 +16,7 @@ const addressSchema = mongoose.Schema(
     pincode: { type: String, trim: true },
     addressType: {
       type: String,
-      enum: ['Home', 'Office', 'Other'],
-      default: 'Home',
+      default: 'home',
     },
   },
   { _id: false } // prevents creating separate _id for each address

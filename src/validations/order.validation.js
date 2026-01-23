@@ -5,6 +5,7 @@ const createOrder = {
   body: Joi.object().keys({
     productId: Joi.string().custom(objectId).required(),
     buyerId: Joi.string().custom(objectId).required(),
+    buyerAddress:Joi.string().required()
   }),
 };
 

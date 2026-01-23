@@ -98,6 +98,10 @@ const orderSchema = mongoose.Schema(
       required: true,
       ref: 'User',
     },
+   buyerAddress: {
+  type:String
+},
+
     productId: {
       type: Types.ObjectId,
       required: true,

@@ -25,7 +25,7 @@ function generateOTP() {
 }
 
 const createOrder = async (payload) => {
-  const { buyerId, productId } = payload;
+  const { buyerId, productId,buyerAddress } = payload;
   const currency = 'UGX';
   const productDetails = await Product.findById(productId);
   if (!productDetails) throw new Error('Product not found');
@@ -70,6 +70,7 @@ const payableAmount = subTotal + taxAmount + platformCharges;
     buyerId,
     sellerId,
     productId,
+    buyerAddress,
     status: 'ONGOING',
   });
 
@@ -468,6 +469,7 @@ const getOrderById = async ({ orderId }) => {
         paybleAmount: 1,
         createdAt: 1,
         deliveryDate: 1,
+        buyerAddress:1,
 
         OTP: { $ifNull: ['$OTP', null] },
         otpExpiresAt: { $ifNull: ['$otpExpiresAt', null] },
