@@ -223,7 +223,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   if (!(await user.isPasswordMatch(currentPassword))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect current password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect current password');
   }
   user.password = newPassword;
   await user.save();
@@ -242,7 +242,7 @@ const deleteAccount = async (userId, password) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   if (!(await user.isPasswordMatch(password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect password');
   }
   user.isActive = false;
   await user.save();
@@ -663,8 +663,8 @@ const getSellerDetails = async (sellerId) => {
 };
 
 
-const saveFcmToken = async ({userId,fcmToken}) => {
-   const user = await User.findByIdAndUpdate(
+const saveFcmToken = async ({ userId, fcmToken }) => {
+  const user = await User.findByIdAndUpdate(
     userId,
     { fcmToken },
     { new: true }
@@ -695,7 +695,7 @@ const addAddress = async (userId, addressData) => {
 
   user.addresses.push(addressData);
   await user.save();
-  return user.addresses; 
+  return user.addresses;
 };
 
 /**
@@ -801,13 +801,13 @@ const verifyOtpBeforeOrder = async (payload) => {
     };
   }
 
- 
+
 
   user.orderOtp = null;
   user.orderOtpExpiresAt = null;
   await user.save();
 
-  
+
   // // notification for buyer
   // await notificationService.createNotification({
   //   recipient: order.buyerId,
