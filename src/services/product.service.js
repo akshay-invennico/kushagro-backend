@@ -57,6 +57,30 @@ const queryProducts = async (filter, options) => {
     matchStage.price = filter.price;
   }
 
+
+  if (options.buyerId) {
+    const blockedSellers = await User.find({ blockedUsers: options.buyerId }).select('_id');
+    const blockedSellerIds = blockedSellers.map((user) => user._id);
+
+    if (blockedSellerIds.length > 0) {
+      if (matchStage.sellerId) {
+        const isBlocked = blockedSellerIds.some((id) => id.equals(matchStage.sellerId));
+        if (isBlocked) {
+          matchStage._id = new mongoose.Types.ObjectId();
+          return {
+            results: [],
+            page: options.page || 1,
+            limit: options.limit || 10,
+            totalPages: 0,
+            totalResults: 0,
+          };
+        }
+      } else {
+        matchStage.sellerId = { $nin: blockedSellerIds };
+      }
+    }
+  }
+
   if (filter.lat && filter.long) {
     const lat = parseFloat(filter.lat);
     const lng = parseFloat(filter.long);

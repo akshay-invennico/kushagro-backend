@@ -393,6 +393,7 @@ const suspendUserById = async (userId, reason) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   user.isSuspended = true;
+  user.isActive = false;
   await user.save();
   return user;
 };
@@ -833,6 +834,66 @@ const verifyOtpBeforeOrder = async (payload) => {
 };
 
 
+/**
+ * Block user
+ * @param {ObjectId} userId
+ * @param {ObjectId} targetUserId
+ * @returns {Promise<User>}
+ */
+const blockUserById = async (userId, targetUserId) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  const targetUser = await getUserById(targetUserId);
+  if (!targetUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Target user not found');
+  }
+  if (!user.blockedUsers.includes(targetUserId)) {
+    user.blockedUsers.push(targetUserId);
+    await user.save();
+  }
+  return user;
+};
+
+/**
+ * Unblock user
+ * @param {ObjectId} userId
+ * @param {ObjectId} targetUserId
+ * @returns {Promise<User>}
+ */
+const unblockUserById = async (userId, targetUserId) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (user.blockedUsers.includes(targetUserId)) {
+    user.blockedUsers = user.blockedUsers.filter((id) => id.toString() !== targetUserId.toString());
+    await user.save();
+  }
+  return user;
+};
+
+/**
+ * Get blocked users by seller id
+ * @param {ObjectId} sellerId
+ * @returns {Promise<Array>}
+ */
+const getBlockedUsers = async (sellerId) => {
+  const seller = await getUserById(sellerId);
+  if (!seller) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Seller not found');
+  }
+
+  const blockedUsers = await User.find({
+    _id: { $in: seller.blockedUsers }
+  }).select('name email phone profile');
+
+  return blockedUsers;
+};
+
+
+
 module.exports = {
   createUser,
   queryUsers,
@@ -854,5 +915,8 @@ module.exports = {
   addAddress,
   getAddresses,
   sendOtpToBuyerBeforeOrder,
-  verifyOtpBeforeOrder
+  verifyOtpBeforeOrder,
+  blockUserById,
+  unblockUserById,
+  getBlockedUsers,
 };

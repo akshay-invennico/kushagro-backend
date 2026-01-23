@@ -40,6 +40,7 @@ const getProducts = catchAsync(async (req, res) => {
 
   if (role === 'BUYER') {
     filter.status = 'ACTIVE';
+    options.buyerId = userId;
   }
 
   if (req.query.minPrice || req.query.maxPrice) {

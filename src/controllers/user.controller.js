@@ -195,6 +195,46 @@ const verifyOtpBeforeOrder = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json(result);
 });
 
+
+const blockBuyer = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const sellerId = req.user._id;
+
+  const result = await userService.blockUserById(sellerId, userId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Buyer blocked successfully',
+    data: result,
+  });
+});
+
+const unblockBuyer = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const sellerId = req.user._id;
+
+  const result = await userService.unblockUserById(sellerId, userId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Buyer unblocked successfully',
+    data: result,
+  });
+});
+
+
+const getBlockedUsers = catchAsync(async (req, res) => {
+  const sellerId = req.user._id;
+
+  const result = await userService.getBlockedUsers(sellerId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Blocked users fetched successfully',
+    data: result,
+  });
+});
+
 module.exports = {
   getUser,
   getUsers,
@@ -212,4 +252,7 @@ module.exports = {
   getBuyerAddresses,
   sendOtpToBuyerBeforeOrder,
   verifyOtpBeforeOrder,
+  blockBuyer,
+  unblockBuyer,
+  getBlockedUsers,
 };
