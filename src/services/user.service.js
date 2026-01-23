@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
 const mongoose = require('mongoose');
-const { User, Report, Order } = require('../models');
+const { User, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
 const Payment = require('../models/payment.model');
 const tokenService = require('./token.service');
@@ -223,7 +223,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   if (!(await user.isPasswordMatch(currentPassword))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect current password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect current password');
   }
   user.password = newPassword;
   await user.save();
@@ -242,37 +242,13 @@ const deleteAccount = async (userId, password) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   if (!(await user.isPasswordMatch(password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect password');
   }
   user.isActive = false;
   await user.save();
   return user;
 };
 
-/**
- * Report a user
- * @param {ObjectId} reporterId
- * @param {ObjectId} reportedId
- * @param {Object} reportBody
- * @returns {Promise<Report>}
- */
-const reportUser = async (reporterId, reportedId, reportBody) => {
-  const reportedUser = await getUserById(reportedId);
-  if (!reportedUser) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  const report = await Report.create({
-    reporterId,
-    reportedId,
-    ...reportBody,
-  });
-
-  reportedUser.isReported = true;
-  await reportedUser.save();
-
-  return report;
-};
 
 
 const getMyTransactions = async (userId, query) => {
@@ -417,6 +393,7 @@ const suspendUserById = async (userId, reason) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   user.isSuspended = true;
+  user.isActive = false;
   await user.save();
   return user;
 };
@@ -523,7 +500,7 @@ const getSellersList = async (query) => {
           $cond: [{ $eq: ['$isAccountVerified', true] }, 'Verified', 'Pending'],
         },
         status: {
-          $cond: [{ $eq: ['$isBlocked', true] }, 'Suspended', 'Active'],
+          $cond: [{ $eq: ['$isSuspended', true] }, 'Suspended', 'Active'],
         },
       },
     },
@@ -540,6 +517,7 @@ const getSellersList = async (query) => {
         earnings: 1,
         idStatus: 1,
         status: 1,
+        isSuspended: 1,
       },
     },
 
@@ -685,21 +663,10 @@ const getSellerDetails = async (sellerId) => {
 
   return result;
 };
-/**
- * Get fraud reports by user id
- * @param {ObjectId} userId
- * @param {Object} options
- * @returns {Promise<QueryResult>}
- */
-const getFraudReportsByUserId = async (userId, options) => {
-  const filter = { reportedId: userId };
-  const reports = await Report.paginate(filter, { ...options, populate: 'reporterId' });
-  return reports;
-};
 
 
-const saveFcmToken = async ({userId,fcmToken}) => {
-   const user = await User.findByIdAndUpdate(
+const saveFcmToken = async ({ userId, fcmToken }) => {
+  const user = await User.findByIdAndUpdate(
     userId,
     { fcmToken },
     { new: true }
@@ -730,7 +697,7 @@ const addAddress = async (userId, addressData) => {
 
   user.addresses.push(addressData);
   await user.save();
-  return user.addresses; 
+  return user.addresses;
 };
 
 /**
@@ -836,13 +803,13 @@ const verifyOtpBeforeOrder = async (payload) => {
     };
   }
 
- 
+
 
   user.orderOtp = null;
   user.orderOtpExpiresAt = null;
   await user.save();
 
-  
+
   // // notification for buyer
   // await notificationService.createNotification({
   //   recipient: order.buyerId,
@@ -868,6 +835,66 @@ const verifyOtpBeforeOrder = async (payload) => {
 };
 
 
+/**
+ * Block user
+ * @param {ObjectId} userId
+ * @param {ObjectId} targetUserId
+ * @returns {Promise<User>}
+ */
+const blockUserById = async (userId, targetUserId) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  const targetUser = await getUserById(targetUserId);
+  if (!targetUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Target user not found');
+  }
+  if (!user.blockedUsers.includes(targetUserId)) {
+    user.blockedUsers.push(targetUserId);
+    await user.save();
+  }
+  return user;
+};
+
+/**
+ * Unblock user
+ * @param {ObjectId} userId
+ * @param {ObjectId} targetUserId
+ * @returns {Promise<User>}
+ */
+const unblockUserById = async (userId, targetUserId) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (user.blockedUsers.includes(targetUserId)) {
+    user.blockedUsers = user.blockedUsers.filter((id) => id.toString() !== targetUserId.toString());
+    await user.save();
+  }
+  return user;
+};
+
+/**
+ * Get blocked users by seller id
+ * @param {ObjectId} sellerId
+ * @returns {Promise<Array>}
+ */
+const getBlockedUsers = async (sellerId) => {
+  const seller = await getUserById(sellerId);
+  if (!seller) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Seller not found');
+  }
+
+  const blockedUsers = await User.find({
+    _id: { $in: seller.blockedUsers }
+  }).select('name email phone profile');
+
+  return blockedUsers;
+};
+
+
+
 module.exports = {
   createUser,
   queryUsers,
@@ -879,17 +906,18 @@ module.exports = {
   getUserByEmailOrPhone,
   changePassword,
   deleteAccount,
-  reportUser,
   getMyTransactions,
   suspendUserById,
   reactivateUserById,
   getResetPasswordLink,
   getSellersList,
   getSellerDetails,
-  getFraudReportsByUserId,
   saveFcmToken,
   addAddress,
   getAddresses,
   sendOtpToBuyerBeforeOrder,
-  verifyOtpBeforeOrder
+  verifyOtpBeforeOrder,
+  blockUserById,
+  unblockUserById,
+  getBlockedUsers,
 };

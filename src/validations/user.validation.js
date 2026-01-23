@@ -81,16 +81,6 @@ const deleteAccount = {
   }),
 };
 
-const reportUser = {
-  params: Joi.object().keys({
-    userId: Joi.string().custom(objectId),
-  }),
-  body: Joi.object().keys({
-    reason: Joi.string().required(),
-    image: Joi.string().allow('').optional(),
-  }),
-};
-
 const suspendUser = {
   params: Joi.object().keys({
     userId: Joi.string().custom(objectId),
@@ -129,7 +119,6 @@ module.exports = {
   deleteUser,
   changePassword,
   deleteAccount,
-  reportUser,
   suspendUser,
   reactivateUser,
   getResetPasswordLink,

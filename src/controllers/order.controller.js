@@ -134,11 +134,13 @@ const resolveOrderFlags = catchAsync(async (req, res) => {
 const getBuyerOrders = async (req, res) => {
   const { buyerId } = req.params;
 
-  const orders = await orderService.getBuyerOrders(buyerId, req.query);
+  const result = await orderService.getBuyerOrders(buyerId, req.query);
 
   res.status(httpStatus.OK).json({
     success: true,
-    data: orders,
+    message: 'Buyer orders fetched successfully',
+    data: result.data,
+    meta: result.meta,
   });
 };
 

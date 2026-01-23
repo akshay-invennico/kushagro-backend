@@ -57,22 +57,6 @@ const deleteAccount = catchAsync(async (req, res) => {
   });
 });
 
-const reportUser = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-
-  await userService.reportUser(req.user._id, userId, {
-    ...req.body,
-  });
-
-  res.status(httpStatus.OK).json({
-    success: true,
-    message: 'User reported successfully',
-    data: null,
-    meta: {},
-    error: null,
-  });
-});
-
 const getMyTransactions = async (req, res) => {
   const userId = req.user._id;
 
@@ -146,12 +130,6 @@ const getSellerDetails = async (req, res) => {
     data: result,
   });
 };
-const getFraudReports = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const data = await userService.getFraudReportsByUserId(userId, options);
-  res.send(data);
-});
 
 const saveFcmToken = catchAsync(async (req, res) => {
   const { userId } = req.params;
@@ -217,23 +195,62 @@ const verifyOtpBeforeOrder = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json(result);
 });
 
+const blockBuyer = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const sellerId = req.user._id;
+
+  const result = await userService.blockUserById(sellerId, userId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Buyer blocked successfully',
+    data: result,
+  });
+});
+
+const unblockBuyer = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const sellerId = req.user._id;
+
+  const result = await userService.unblockUserById(sellerId, userId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Buyer unblocked successfully',
+    data: result,
+  });
+});
+
+const getBlockedUsers = catchAsync(async (req, res) => {
+  const sellerId = req.user._id;
+
+  const result = await userService.getBlockedUsers(sellerId);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Blocked users fetched successfully',
+    data: result,
+  });
+});
+
 module.exports = {
   getUser,
   getUsers,
   updateUser,
   changePassword,
   deleteAccount,
-  reportUser,
   getMyTransactions,
   suspendUser,
   reactivateUser,
   getResetPasswordLink,
   getSellers,
   getSellerDetails,
-  getFraudReports,
   saveFcmToken,
   addBuyerAddress,
   getBuyerAddresses,
   sendOtpToBuyerBeforeOrder,
   verifyOtpBeforeOrder,
+  blockBuyer,
+  unblockBuyer,
+  getBlockedUsers,
 };

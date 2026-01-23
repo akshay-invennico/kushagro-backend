@@ -8,3 +8,4 @@ module.exports.productService = require('./product.service');
 module.exports.notificationService = require('./notification.service');
 module.exports.commissionService = require('./commission.service');
 module.exports.dashboardService = require('./dashboard.service');
+module.exports.reportService = require('./report.service');

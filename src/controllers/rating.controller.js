@@ -33,7 +33,8 @@ const getRatings = catchAsync(async (req, res) => {
 
   res.json({
     success: true,
-    data: result,
+    data: result.results,
+    meta: result.meta,
   });
 });
 
@@ -66,8 +67,9 @@ const getSellerRatingsById = catchAsync(async (req, res) => {
         averageRating: Number(stats.averageRating?.toFixed(1)) || 0,
         totalReviews: stats.totalReviews || 0,
       },
-      reviews: ratings,
+      reviews: ratings.results,
     },
+    meta: ratings.meta,
   });
 });
 

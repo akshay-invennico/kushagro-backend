@@ -19,33 +19,33 @@ const User = require('../models/user.model')
 const loginUserWithEmailAndPassword = async (email, password) => {
   const user = await userService.getUserByEmail(email);
   if (!user || !(await user.isPasswordMatch(password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect email or password');
   }
 
   if (!user.isActive) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Your account is not active');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Your account is not active');
   }
 
   if (user.isVerified && user.isAccountVerified) {
     return user;
   }
-  throw new ApiError(httpStatus.UNAUTHORIZED, 'Please verify your account first');
+  throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your account first');
 };
 
 const loginUserWithPhoneAndPassword = async (phone, password) => {
   const user = await userService.getUserByPhone(phone);
   if (!user || !(await user.isPasswordMatch(password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect phone or password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect phone or password');
   }
 
   if (!user.isActive) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Your account is not active');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Your account is not active');
   }
 
   if (user.isVerified && user.isAccountVerified) {
     return user;
   }
-  throw new ApiError(httpStatus.UNAUTHORIZED, 'Please verify your account first');
+  throw new ApiError(httpStatus.BAD_REQUEST, 'Please verify your account first');
 };
 
 /**
@@ -57,10 +57,10 @@ const loginUserWithPhoneAndPassword = async (phone, password) => {
 const loginAdminWithEmailAndPassword = async (email, password) => {
   const user = await userService.getUserByEmail(email);
   if (!user || !(await user.isPasswordMatch(password))) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Incorrect email or password');
   }
   if (user.role !== 'ADMIN') {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'You are not authorized to login as admin');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'You are not authorized to login as admin');
   }
 
   return user;
@@ -291,13 +291,13 @@ const firebaseSSOLogin = async ({ idToken }) => {
 
   let user = await User.findOne({ email });
 
- 
+
   if (!user) {
     user = await User.create({
       name: name || 'User',
       email,
       profile: picture || null,
-      password: uid, 
+      password: uid,
       isVerified: false,
       isAccountVerified: false,
       primaryKey: 'email',

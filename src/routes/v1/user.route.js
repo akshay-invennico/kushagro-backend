@@ -15,7 +15,6 @@ router
 router
   .route('/delete/account')
   .patch(auth('manageUsers'), validate(userValidation.deleteAccount), userController.deleteAccount);
-router.route('/report/:userId').post(auth('manageUsers'), validate(userValidation.reportUser), userController.reportUser);
 router.get('/transactions', auth(), userController.getMyTransactions);
 
 router.route('/:userId/suspend').post(auth('manageUsers'), validate(userValidation.suspendUser), userController.suspendUser);
@@ -30,12 +29,16 @@ router
 
 router.get('/seller', userController.getSellers);
 router.get('/sellerdata/:sellerId', userController.getSellerDetails);
-router.route('/:userId/reports').get(auth('manageUsers'), userController.getFraudReports);
 router.patch('/savefcm/:userId', validate(userValidation.saveFcmToken), userController.saveFcmToken);
 router.patch('/address/:userId', userController.addBuyerAddress);
 router.get('/address/:userId', userController.getBuyerAddresses);
 router.patch('/sendotp/buyer/:userId', userController.sendOtpToBuyerBeforeOrder);
 router.post('/verifyotp/buyer', userController.verifyOtpBeforeOrder);
+
+router.post('/:userId/block', auth('manageUsers'), userController.blockBuyer);
+router.post('/:userId/unblock', auth('manageUsers'), userController.unblockBuyer);
+router.get('/blocked', auth('manageUsers'), userController.getBlockedUsers);
+
 module.exports = router;
 
 /**

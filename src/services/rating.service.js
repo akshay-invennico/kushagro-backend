@@ -8,6 +8,17 @@ const createRating = async (buyerId, body) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Cannot rate yourself');
   }
 
+  const existingRating = await Rating.findOne({
+    buyerId,
+    sellerId: body.sellerId,
+    orderId: body.orderId,
+    isDeleted: false,
+  });
+
+  if (existingRating) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'You have already rated this seller for this order');
+  }
+
   return Rating.create({
     buyerId,
     sellerId: body.sellerId,
@@ -18,7 +29,45 @@ const createRating = async (buyerId, body) => {
 };
 
 const queryRatings = async (filter, options) => {
-  return Rating.paginate(filter, options);
+  const limit = options.limit && parseInt(options.limit, 10) > 0 ? parseInt(options.limit, 10) : 10;
+  const page = options.page && parseInt(options.page, 10) > 0 ? parseInt(options.page, 10) : 1;
+  const skip = (page - 1) * limit;
+
+  let sort = {};
+  if (options.sortBy) {
+    const sortingCriteria = [];
+    options.sortBy.split(',').forEach((sortOption) => {
+      const [key, order] = sortOption.split(':');
+      sortingCriteria.push((order === 'desc' ? '-' : '') + key);
+    });
+    sort = sortingCriteria.join(' ');
+  } else {
+    sort = '-createdAt';
+  }
+
+  const totalResults = await Rating.countDocuments(filter);
+
+  const results = await Rating.find(filter)
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .populate({
+      path: 'buyerId',
+      select: 'name email phone profile',
+    })
+    .exec();
+
+  const totalPages = Math.ceil(totalResults / limit);
+
+  return {
+    results,
+    meta: {
+      page,
+      limit,
+      totalPages,
+      totalResults,
+    },
+  };
 };
 
 const deleteRating = async (ratingId) => {

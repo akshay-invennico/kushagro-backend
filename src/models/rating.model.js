@@ -44,9 +44,6 @@ const ratingSchema = mongoose.Schema(
   { timestamps: true }
 );
 
-// Prevent duplicate review per order
-ratingSchema.index({ buyer: 1, seller: 1, order: 1 }, { unique: true });
-
 ratingSchema.plugin(toJSON);
 ratingSchema.plugin(paginate);
 
