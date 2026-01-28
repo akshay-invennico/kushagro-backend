@@ -266,9 +266,11 @@ const verifySeller = async (sellerId, status, reasons = []) => {
   if (status === 'APPROVED') {
     seller.identityVerificationStatus = 'APPROVED';
     seller.rejectionReasons = [];
+    seller.isVerified = true;
   } else if (status === 'REJECTED') {
     seller.identityVerificationStatus = 'REJECTED';
     seller.rejectionReasons = reasons;
+    seller.isVerified = false;
   } else {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid status');
   }

@@ -21,8 +21,8 @@ if (config.env !== 'test') {
   app.use(morgan.errorHandler);
 }
 
-app.use('/api/webhooks/paystack', express.raw({ type: 'application/json' }));
-app.use('/api/webhooks/paystack', require('./routes/v1/webhook.routes'));
+// app.use('/api/webhooks/paystack', express.raw({ type: 'application/json' }));
+// app.use('/api/webhooks/paystack', require('./routes/v1/webhook.routes'));
 
 app.use(helmet());
 app.use(express.json());
