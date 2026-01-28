@@ -105,37 +105,63 @@ const getTicketById = async (ticketId) => {
   return ticket;
 };
 
-const updateTicketStatus = async (ticketId, status) => {
-  const ticket = await getTicketById(ticketId);
+const updateTicketStatusBulk = async (ticketIds, status) => {
+  const updateData = {
+    status,
+  };
 
-  ticket.status = status;
   if (status === 'CLOSED') {
-    ticket.closedAt = new Date();
+    updateData.closedAt = new Date();
   }
 
-  await ticket.save();
-  return ticket;
+  const result = await Ticket.updateMany(
+    {
+      _id: { $in: ticketIds },
+      isDeleted: false,
+    },
+    {
+      $set: updateData,
+    }
+  );
+
+  if (result.matchedCount === 0) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'No tickets found to update');
+  }
+
+  return result;
 };
 
-const deleteTicket = async (ticketId, user) => {
-  const ticket = await Ticket.findById(ticketId);
+const deleteTicketBulk = async (ticketIds, user) => {
+  const tickets = await Ticket.find({
+    _id: { $in: ticketIds },
+    isDeleted: false,
+  });
 
-  if (!ticket || ticket.isDeleted) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Ticket not found');
+  if (!tickets.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Tickets not found');
   }
 
-  if (user.role === 'BUYER' || (user.role === 'SELLER' && ticket.user.toString() !== user.id)) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'Not allowed to delete this ticket');
+  for (const ticket of tickets) {
+    if (
+      user.role === 'BUYER' ||
+      (user.role === 'SELLER' && ticket.user.toString() !== user.id)
+    ) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'Not allowed to delete one or more tickets');
+    }
   }
 
-  if (ticket.status === 'CLOSED') {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Closed tickets cannot be deleted');
-  }
+  const result = await Ticket.updateMany(
+    {
+      _id: { $in: ticketIds },
+    },
+    {
+      $set: { isDeleted: true },
+    }
+  );
 
-  ticket.isDeleted = true;
-  await ticket.save();
-
-  return ticket;
+  return {
+    deletedCount: result.modifiedCount,
+  };
 };
 
 module.exports = {
@@ -143,6 +169,6 @@ module.exports = {
   getAllTickets,
   queryTickets,
   getTicketById,
-  updateTicketStatus,
-  deleteTicket,
+  updateTicketStatusBulk,
+  deleteTicketBulk,
 };
