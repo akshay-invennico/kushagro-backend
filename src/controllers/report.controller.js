@@ -2,6 +2,7 @@ const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { reportService } = require('../services');
 const pick = require('../utils/pick');
+const ApiError = require('../utils/ApiError');
 
 /**
  * Report a user
@@ -127,10 +128,7 @@ const deleteReport = catchAsync(async (req, res) => {
   const { reportIds } = req.body;
 
   if (!Array.isArray(reportIds) || reportIds.length === 0) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      'reportIds must be a non-empty array'
-    );
+    throw new ApiError(httpStatus.BAD_REQUEST, 'reportIds must be a non-empty array');
   }
 
   const result = await reportService.deleteReportById(reportIds);

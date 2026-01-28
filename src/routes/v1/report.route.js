@@ -16,7 +16,9 @@ router
   .route('/by/:userId')
   .get(auth('manageUsers'), validate(reportValidation.getReportsMadeByUser), reportController.getReportsMadeByUser);
 
-router.route('/:reportId').get(auth('manageUsers'), validate(reportValidation.getReportById), reportController.getReportById)
+router
+  .route('/:reportId')
+  .get(auth('manageUsers'), validate(reportValidation.getReportById), reportController.getReportById);
 router.route('/delete').delete(auth('manageUsers'), reportController.deleteReport);
 
 module.exports = router;
