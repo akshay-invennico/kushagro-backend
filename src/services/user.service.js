@@ -409,6 +409,7 @@ const reactivateUserById = async (userId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
   user.isSuspended = false;
+  user.isActive = true;
   await user.save();
   return user;
 };
@@ -437,11 +438,38 @@ const getSellersList = async (query) => {
   const limit = Math.max(parseInt(query.limit) || 10, 1);
   const skip = (page - 1) * limit;
 
-  const pipeline = [
-    {
-      $match: { role: 'SELLER' },
-    },
+  const {
+    status,
+    idStatus,
+    joinFrom,
+    joinTo,
+    earningFrom,
+    earningTo,
+    orderFrom,
+    orderTo,
+    listingFrom,
+    listingTo,
+  } = query;
 
+  const matchStage = { role: 'SELLER' };
+
+  if (status === 'Active') matchStage.isSuspended = false;
+  if (status === 'Suspended') matchStage.isSuspended = true;
+
+  if (idStatus === 'Verified') matchStage.isVerified = true;
+  if (idStatus === 'Rejected') matchStage.isVerified = false;
+
+  /** Join Date filter */
+  if (joinFrom || joinTo) {
+    matchStage.createdAt = {};
+    if (joinFrom) matchStage.createdAt.$gte = new Date(joinFrom);
+    if (joinTo) matchStage.createdAt.$lte = new Date(joinTo);
+  }
+
+  const pipeline = [
+    { $match: matchStage },
+
+    /** Products */
     {
       $lookup: {
         from: 'products',
@@ -451,6 +479,7 @@ const getSellersList = async (query) => {
       },
     },
 
+    /** Orders */
     {
       $lookup: {
         from: 'orders',
@@ -460,6 +489,7 @@ const getSellersList = async (query) => {
       },
     },
 
+    /** Earnings */
     {
       $lookup: {
         from: 'payments',
@@ -479,9 +509,7 @@ const getSellersList = async (query) => {
           {
             $group: {
               _id: null,
-              totalEarnings: {
-                $sum: { $toDouble: '$amount' },
-              },
+              totalEarnings: { $sum: { $toDouble: '$amount' } },
             },
           },
         ],
@@ -489,6 +517,7 @@ const getSellersList = async (query) => {
       },
     },
 
+    /** Computed fields */
     {
       $addFields: {
         totalListings: { $size: '$products' },
@@ -497,14 +526,49 @@ const getSellersList = async (query) => {
           $ifNull: [{ $arrayElemAt: ['$earnings.totalEarnings', 0] }, 0],
         },
         idStatus: {
-          $cond: [{ $eq: ['$isAccountVerified', true] }, 'Verified', 'Pending'],
+          $cond: ['$isAccountVerified', 'Verified', 'Pending'],
         },
         status: {
-          $cond: [{ $eq: ['$isSuspended', true] }, 'Suspended', 'Active'],
+          $cond: ['$isSuspended', 'Suspended', 'Active'],
         },
       },
     },
 
+    /** -----------------------------
+     * Range filters (post-compute)
+     ------------------------------ */
+    {
+      $match: {
+        ...(earningFrom || earningTo
+          ? {
+              earnings: {
+                ...(earningFrom && { $gte: Number(earningFrom) }),
+                ...(earningTo && { $lte: Number(earningTo) }),
+              },
+            }
+          : {}),
+
+        ...(orderFrom || orderTo
+          ? {
+              totalOrders: {
+                ...(orderFrom && { $gte: Number(orderFrom) }),
+                ...(orderTo && { $lte: Number(orderTo) }),
+              },
+            }
+          : {}),
+
+        ...(listingFrom || listingTo
+          ? {
+              totalListings: {
+                ...(listingFrom && { $gte: Number(listingFrom) }),
+                ...(listingTo && { $lte: Number(listingTo) }),
+              },
+            }
+          : {}),
+      },
+    },
+
+    /** Projection */
     {
       $project: {
         name: 1,
@@ -517,10 +581,11 @@ const getSellersList = async (query) => {
         earnings: 1,
         idStatus: 1,
         status: 1,
-        isSuspended: 1,
+        isVerified: 1
       },
     },
 
+    /** Pagination */
     {
       $facet: {
         data: [
@@ -550,10 +615,11 @@ const getSellersList = async (query) => {
 };
 
 
+
 const getSellerDetails = async (sellerId) => {
   const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
 
-  const [result] = await User.aggregate([
+  const [seller] = await User.aggregate([
     {
       $match: {
         _id: sellerObjectId,
@@ -561,7 +627,7 @@ const getSellerDetails = async (sellerId) => {
       },
     },
 
-
+    /** Products */
     {
       $lookup: {
         from: 'products',
@@ -571,6 +637,7 @@ const getSellerDetails = async (sellerId) => {
       },
     },
 
+    /** Orders */
     {
       $lookup: {
         from: 'orders',
@@ -580,6 +647,7 @@ const getSellerDetails = async (sellerId) => {
       },
     },
 
+    /** Earnings */
     {
       $lookup: {
         from: 'payments',
@@ -599,7 +667,7 @@ const getSellerDetails = async (sellerId) => {
           {
             $group: {
               _id: null,
-              total: { $sum: { $toDouble: '$amount' } },
+              totalEarnings: { $sum: { $toDouble: '$amount' } },
             },
           },
         ],
@@ -607,62 +675,130 @@ const getSellerDetails = async (sellerId) => {
       },
     },
 
+    /** Reviews */
+    {
+      $lookup: {
+        from: 'reviews',
+        let: { sellerId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$sellerId', '$$sellerId'] },
+            },
+          },
+          {
+            $project: {
+              rating: 1,
+              review: 1,
+              buyerId: 1,
+              createdAt: 1,
+            },
+          },
+        ],
+        as: 'reviews',
+      },
+    },
+
+    /** Fraud Reports */
+    {
+      $lookup: {
+        from: 'frauds',
+        let: { sellerId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ['$reportedId', '$$sellerId'] },
+            },
+          },
+          {
+            $project: {
+              reason: 1,
+              image: 1,
+              reporterId: 1,
+              createdAt: 1,
+            },
+          },
+        ],
+        as: 'frauds',
+      },
+    },
+
+    /** Computed fields */
     {
       $addFields: {
         totalListings: { $size: '$products' },
         totalOrders: { $size: '$orders' },
-        completedOrders: {
-          $size: {
-            $filter: {
-              input: '$orders',
-              as: 'order',
-              cond: { $eq: ['$$order.status', 'Completed'] },
-            },
-          },
+
+        earnings: {
+          $ifNull: [{ $arrayElemAt: ['$earnings.totalEarnings', 0] }, 0],
         },
-        totalEarnings: {
-          $ifNull: [{ $arrayElemAt: ['$earnings.total', 0] }, 0],
+
+        totalReviews: { $size: '$reviews' },
+        averageRating: {
+          $cond: [
+            { $gt: [{ $size: '$reviews' }, 0] },
+            { $avg: '$reviews.rating' },
+            0,
+          ],
         },
-        verificationStatus: {
-          $cond: [{ $eq: ['$isAccountVerified', true] }, 'Verified', 'Pending'],
+
+        totalFrauds: { $size: '$frauds' },
+
+        idStatus: {
+          $cond: ['$isAccountVerified', 'Verified', 'Pending'],
         },
+
         status: {
-          $cond: [{ $eq: ['$isBlocked', true] }, 'Suspended', 'Active'],
+          $cond: ['$isSuspended', 'Suspended', 'Active'],
+        },
+
+        isActive: {
+          $cond: ['$isSuspended', false, true],
         },
       },
     },
 
+    /** Final shape */
     {
       $project: {
-        stats: {
-          totalOrders: '$totalOrders',
-          completedOrders: '$completedOrders',
-          totalListings: '$totalListings',
-          totalEarnings: '$totalEarnings',
-        },
-        seller: {
-          _id: '$_id',
-          name: '$name',
-          email: '$email',
-          phone: '$phone',
-          profile: '$profile',
-          address: '$address',
-          bio: '$bio',
-          governmentId: '$governmentId',
-          joinedAt: '$createdAt',
-          status: '$status',
-          verificationStatus: '$verificationStatus',
-        },
+        _id: 1,
+        profile: 1,
+        name: 1,
+        email: 1,
+        phone: 1,
+        createdAt: 1,
+
+        earnings: 1,
+        totalListings: 1,
+        totalOrders: 1,
+
+        idStatus: 1,
+        status: 1,
+
+        isAccountVerified: 1,
+        isSuspended: 1,
+        isActive: 1,
+
+        // reviews
+        totalReviews: 1,
+        averageRating: { $round: ['$averageRating', 1] },
+        reviews: 1,
+
+        // frauds
+        totalFrauds: 1,
+        frauds: 1,
       },
     },
   ]);
 
-  if (!result) {
+  if (!seller) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Seller not found');
   }
 
-  return result;
+  return seller;
 };
+
+
 
 
 const saveFcmToken = async ({ userId, fcmToken }) => {

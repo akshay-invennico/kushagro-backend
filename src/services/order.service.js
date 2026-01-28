@@ -15,10 +15,23 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 const { sendVerificationEmail } = require('./email.service');
 const { sendOtpSms } = require('./sms.service');
 const notificationService = require('./notification.service');
+const { not } = require('joi');
 
-function generateOrderNumber() {
-  return Math.floor(100000 + Math.random() * 900000);
-}
+const generateOrderNumber = async () => {
+  const lastOrder = await Order.findOne({})
+    .sort({ createdAt: -1 })
+    .select('orderNumber');
+
+  let nextNumber = 1;
+
+  if (lastOrder?.orderNumber) {
+    const lastNumericPart = parseInt(lastOrder.orderNumber.replace('KSA', ''), 10);
+    nextNumber = lastNumericPart + 1;
+  }
+
+  return `KSA${String(nextNumber).padStart(6, '0')}`;
+};
+
 
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000);
@@ -41,7 +54,7 @@ const createOrder = async (payload) => {
 
   const commission = await Commission.findOne();
 
-  const orderNumber = generateOrderNumber();
+  const orderNumber =  await generateOrderNumber();
   const subTotal = quantity * price;
 
   const taxRate = commission?.commissionPercentage || 0;
@@ -301,6 +314,8 @@ const getAllOrders = async (userId, query) => {
       date: '$createdAt',
       amount: '$totalAmount',
       status: '$status',
+      orderNumber: '$orderNumber',
+      isFlagged: '$isFlagged',
 
       /* ✅ REAL LATEST PAYMENT STATUS FROM DB */
       paymentStatus: {
@@ -470,10 +485,13 @@ const getOrderById = async ({ orderId }) => {
         createdAt: 1,
         deliveryDate: 1,
         buyerAddress:1,
-
+        cancellationReason: { $ifNull: ['$cancellationReason', null] },
+        note: { $ifNull: ['$note', null] },
         OTP: { $ifNull: ['$OTP', null] },
         otpExpiresAt: { $ifNull: ['$otpExpiresAt', null] },
-
+        otpSent: { $ifNull: ['$otpSent', false] },
+        otpVerified: { $ifNull: ['$otpVerified', false] },
+        
         payment: {
           reference: 1,
           status: 1,
@@ -687,90 +705,90 @@ const cancelOrder = async (payload) => {
     );
   }
 
-  /* ================= PAYIN PAYMENT ================= */
-  const paymentDoc = await Payment.findOne({
-    orderId,
-    type: 'PayIn',
-    status: 'Payment success',
-  });
+  // /* ================= PAYIN PAYMENT ================= */
+  // const paymentDoc = await Payment.findOne({
+  //   orderId,
+  //   type: 'PayIn',
+  //   status: 'Payment success',
+  // });
 
-  if (!paymentDoc) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Payment not completed');
-  }
+  // if (!paymentDoc) {
+  //   throw new ApiError(httpStatus.BAD_REQUEST, 'Payment not completed');
+  // }
 
-  /* ================= PREVENT DOUBLE REFUND ================= */
-  if (
-    paymentDoc.type === 'Refund' &&
-    ['Refund initiated', 'Refund completed'].includes(paymentDoc.status)
-  ) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      'Refund already initiated for this order'
-    );
-  }
+  // /* ================= PREVENT DOUBLE REFUND ================= */
+  // if (
+  //   paymentDoc.type === 'Refund' &&
+  //   ['Refund initiated', 'Refund completed'].includes(paymentDoc.status)
+  // ) {
+  //   throw new ApiError(
+  //     httpStatus.BAD_REQUEST,
+  //     'Refund already initiated for this order'
+  //   );
+  // }
 
-  /* ================= TRANSACTION ID ================= */
-  let transactionId = null;
+  // /* ================= TRANSACTION ID ================= */
+  // let transactionId = null;
 
-  if (paymentDoc.authorization_Id?.transactionId) {
-    transactionId = paymentDoc.authorization_Id.transactionId;
-  } else if (paymentDoc.reference) {
-    transactionId = paymentDoc.reference;
-  }
+  // if (paymentDoc.authorization_Id?.transactionId) {
+  //   transactionId = paymentDoc.authorization_Id.transactionId;
+  // } else if (paymentDoc.reference) {
+  //   transactionId = paymentDoc.reference;
+  // }
 
-  if (!transactionId) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Transaction ID missing');
-  }
+  // if (!transactionId) {
+  //   throw new ApiError(httpStatus.BAD_REQUEST, 'Transaction ID missing');
+  // }
 
-  /* ================= REFUND REQUEST ================= */
-  const refundPayload = {
-    amount: order.paybleAmount,
-    comments: cancellationReason || `Refund for order ${order.orderNumber}`,
-  };
+  // /* ================= REFUND REQUEST ================= */
+  // const refundPayload = {
+  //   amount: order.paybleAmount,
+  //   comments: cancellationReason || `Refund for order ${order.orderNumber}`,
+  // };
 
-  const response = await payment.post(
-    `/transactions/${transactionId}/refund`,
-    refundPayload
-  );
+  // const response = await payment.post(
+  //   `/transactions/${transactionId}/refund`,
+  //   refundPayload
+  // );
 
-  if (!response?.data) {
-    throw new ApiError(httpStatus.BAD_GATEWAY, 'Refund initiation failed');
-  }
+  // if (!response?.data) {
+  //   throw new ApiError(httpStatus.BAD_GATEWAY, 'Refund initiation failed');
+  // }
 
   /* ================= UPDATE ORDER ================= */
   await Order.updateOne(
     { _id: orderId },
     {
       $set: {
+        status: 'CANCELLED',
         cancellationReason: cancellationReason || 'Order cancelled',
         note: note || null,
       },
     }
   );
 
-  /* ================= UPDATE SAME PAYMENT DOCUMENT ================= */
-  await Payment.updateOne(
-    { _id: paymentDoc._id },
-    {
-      $set: {
-        type: 'Refund',
-        status: 'Refund initiated',
-        refund_reason: refundPayload.comments,
-        originalReference: paymentDoc.reference,
-        reference: transactionId,
-        updatedAt: new Date(),
-      },
-    }
-  );
+  // /* ================= UPDATE SAME PAYMENT DOCUMENT ================= */
+  // await Payment.updateOne(
+  //   { _id: paymentDoc._id },
+  //   {
+  //     $set: {
+  //       type: 'Refund',
+  //       status: 'Refund initiated',
+  //       refund_reason: refundPayload.comments,
+  //       originalReference: paymentDoc.reference,
+  //       reference: transactionId,
+  //       updatedAt: new Date(),
+  //     },
+  //   }
+  // );
 
   /* ================= RESPONSE ================= */
   return {
     success: true,
-    message: 'Order cancelled and refund initiated',
+    message: 'Order cancelled',
     data: {
       orderId,
       orderStatus: 'CANCELLED',
-      paymentStatus: 'Refund initiated',
     },
   };
 };
