@@ -135,18 +135,22 @@ const getReportById = async (reportId) => {
 };
 
 /**
- * Delete report by id (hard delete)
- * @param {ObjectId} reportId
- * @returns {Promise<Report>}
+ * Bulk delete reports by ids (hard delete)
+ * @param {ObjectId[]} reportIds
+ * @returns {Promise<{ deletedCount: number }>}
  */
-const deleteReportById = async (reportId) => {
-  const report = await Report.findById(reportId);
-  if (!report) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Report not found');
+const deleteReportById = async (reportIds) => {
+  const result = await Report.deleteMany({
+    _id: { $in: reportIds },
+  });
+
+  if (result.deletedCount === 0) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'No reports found to delete');
   }
 
-  await report.deleteOne();
-  return report;
+  return {
+    deletedCount: result.deletedCount,
+  };
 };
 
 module.exports = {

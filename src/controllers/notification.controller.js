@@ -2,7 +2,7 @@ const httpStatus = require('http-status');
 const pick = require('../utils/pick');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
-const { notificationService } = require('../services');
+const { notificationService, socketService } = require('../services');
 
 const getNotifications = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['isRead']);
@@ -33,6 +33,7 @@ const markRead = catchAsync(async (req, res) => {
   if (notification.recipient.toString() !== req.user.id) {
     throw new ApiError(httpStatus.FORBIDDEN, 'You cannot access this notification');
   }
+  socketService.emitToUser(req.user.id, 'notification_read', notification);
 
   res.status(httpStatus.OK).send({
     success: true,
@@ -45,6 +46,7 @@ const markRead = catchAsync(async (req, res) => {
 
 const markAllRead = catchAsync(async (req, res) => {
   await notificationService.markAllAsRead(req.user.id);
+  socketService.emitToUser(req.user.id, 'all_notifications_read', {});
 
   res.status(httpStatus.OK).send({
     success: true,
@@ -67,6 +69,7 @@ const deleteNotification = catchAsync(async (req, res) => {
   }
 
   await notificationService.deleteNotification(req.params.notificationId);
+  socketService.emitToUser(req.user.id, 'notification_deleted', { id: req.params.notificationId });
 
   res.status(httpStatus.OK).send({
     success: true,

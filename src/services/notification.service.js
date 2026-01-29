@@ -3,13 +3,17 @@ const ApiError = require('../utils/ApiError');
 const Notification = require('../models/notification.model');
 const admin = require('../config/firebase');
 const User = require('../models/user.model');
+const { emitToUser } = require('./socket.service');
+
 /**
  * create notification
  * @param {Object} notificationBody
  * @returns {Promise<Notification>}
  */
 const createNotification = async (notificationBody) => {
-  return Notification.create(notificationBody);
+  const notification = await Notification.create(notificationBody);
+  emitToUser(notification.recipient, 'notification', notification);
+  return notification;
 };
 
 /**
@@ -173,6 +177,22 @@ const sendPushNotificationByRole = async ({
   };
 };
 
+/**
+ * Send real-time notification without storing (optional)
+ * @param {string} userId
+ * @param {string} title
+ * @param {string} message
+ * @param {object} data
+ */
+const sendRealTimeOnly = (userId, title, message, data = {}) => {
+  emitToUser(userId, 'notification_direct', {
+    title,
+    message,
+    data,
+    createdAt: new Date(),
+  });
+};
+
 
 
 
@@ -183,5 +203,6 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  sendPushNotificationByRole
+  sendPushNotificationByRole,
+  sendRealTimeOnly,
 };

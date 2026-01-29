@@ -6,9 +6,8 @@ const router = express.Router();
 
 router.route('/').post(auth(), ticketController.createTicket).get(auth(), ticketController.getTickets);
 
-router.route('/:ticketId').get(auth(), ticketController.getTicketDetails).delete(auth(), ticketController.deleteTicket);
-
-router.route('/status/:ticketId').patch(auth(), ticketController.updateTicketStatus);
+router.route('/').get(auth(), ticketController.getTicketDetails).delete(auth(), ticketController.deleteTicket);
+router.route('/status/').patch(auth(), ticketController.updateTicketStatus);
 
 module.exports = router;
 

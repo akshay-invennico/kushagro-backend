@@ -1,6 +1,8 @@
+const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const pick = require('../utils/pick');
 const ticketService = require('../services/ticket.service');
+const ApiError = require('../utils/ApiError');
 
 const createTicket = catchAsync(async (req, res) => {
   const ticket = await ticketService.createTicket(req.user.id, req.body);
@@ -56,21 +58,38 @@ const getTicketDetails = catchAsync(async (req, res) => {
 });
 
 const updateTicketStatus = catchAsync(async (req, res) => {
-  const ticket = await ticketService.updateTicketStatus(req.params.ticketId, req.body.status);
+  const { ticketIds, status } = req.body;
+
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'ticketIds must be a non-empty array');
+  }
+
+  if (!status) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'status is required');
+  }
+
+  await ticketService.updateTicketStatusBulk(ticketIds, status);
 
   res.json({
     success: true,
-    message: 'Ticket status updated',
-    data: ticket,
+    message: `Tickets updated successfully`,
+    data: null,
   });
 });
 
 const deleteTicket = catchAsync(async (req, res) => {
-  await ticketService.deleteTicket(req.params.ticketId, req.user);
+  const { ticketIds } = req.body;
+
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'ticketIds must be a non-empty array');
+  }
+
+  await ticketService.deleteTicketBulk(ticketIds, req.user);
 
   res.json({
     success: true,
-    message: 'Ticket deleted successfully',
+    message: `Tickets deleted successfully`,
+    data: null,
   });
 });
 

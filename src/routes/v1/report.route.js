@@ -18,8 +18,8 @@ router
 
 router
   .route('/:reportId')
-  .get(auth('manageUsers'), validate(reportValidation.getReportById), reportController.getReportById)
-  .delete(auth('manageUsers'), validate(reportValidation.deleteReport), reportController.deleteReport);
+  .get(auth('manageUsers'), validate(reportValidation.getReportById), reportController.getReportById);
+router.route('/delete').delete(auth('manageUsers'), reportController.deleteReport);
 
 module.exports = router;
 

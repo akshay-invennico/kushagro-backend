@@ -456,8 +456,18 @@ const getSellersList = async (query) => {
   if (status === 'Active') matchStage.isSuspended = false;
   if (status === 'Suspended') matchStage.isSuspended = true;
 
-  if (idStatus === 'Verified') matchStage.isVerified = true;
-  if (idStatus === 'Rejected') matchStage.isVerified = false;
+  if (idStatus === 'Verified') {
+    matchStage.identityVerificationStatus = 'APPROVED';
+  }
+
+  if (idStatus === 'Pending') {
+    matchStage.identityVerificationStatus = 'PENDING';
+  }
+
+  if (idStatus === 'Rejected') {
+    matchStage.identityVerificationStatus = 'REJECTED';
+  }
+
 
   /** Join Date filter */
   if (joinFrom || joinTo) {
@@ -526,7 +536,19 @@ const getSellersList = async (query) => {
           $ifNull: [{ $arrayElemAt: ['$earnings.totalEarnings', 0] }, 0],
         },
         idStatus: {
-          $cond: ['$isAccountVerified', 'Verified', 'Pending'],
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ['$identityVerificationStatus', 'APPROVED'] },
+                then: 'Verified',
+              },
+              {
+                case: { $eq: ['$identityVerificationStatus', 'REJECTED'] },
+                then: 'Rejected',
+              },
+            ],
+            default: 'Pending',
+          },
         },
         status: {
           $cond: ['$isSuspended', 'Suspended', 'Active'],
@@ -541,29 +563,29 @@ const getSellersList = async (query) => {
       $match: {
         ...(earningFrom || earningTo
           ? {
-              earnings: {
-                ...(earningFrom && { $gte: Number(earningFrom) }),
-                ...(earningTo && { $lte: Number(earningTo) }),
-              },
-            }
+            earnings: {
+              ...(earningFrom && { $gte: Number(earningFrom) }),
+              ...(earningTo && { $lte: Number(earningTo) }),
+            },
+          }
           : {}),
 
         ...(orderFrom || orderTo
           ? {
-              totalOrders: {
-                ...(orderFrom && { $gte: Number(orderFrom) }),
-                ...(orderTo && { $lte: Number(orderTo) }),
-              },
-            }
+            totalOrders: {
+              ...(orderFrom && { $gte: Number(orderFrom) }),
+              ...(orderTo && { $lte: Number(orderTo) }),
+            },
+          }
           : {}),
 
         ...(listingFrom || listingTo
           ? {
-              totalListings: {
-                ...(listingFrom && { $gte: Number(listingFrom) }),
-                ...(listingTo && { $lte: Number(listingTo) }),
-              },
-            }
+            totalListings: {
+              ...(listingFrom && { $gte: Number(listingFrom) }),
+              ...(listingTo && { $lte: Number(listingTo) }),
+            },
+          }
           : {}),
       },
     },
@@ -581,7 +603,8 @@ const getSellersList = async (query) => {
         earnings: 1,
         idStatus: 1,
         status: 1,
-        isVerified: 1
+        isVerified: 1,
+        identityVerificationStatus: 1,
       },
     },
 
@@ -744,9 +767,7 @@ const getSellerDetails = async (sellerId) => {
 
         totalFrauds: { $size: '$frauds' },
 
-        idStatus: {
-          $cond: ['$isAccountVerified', 'Verified', 'Pending'],
-        },
+        idStatus: '$identityVerificationStatus',
 
         status: {
           $cond: ['$isSuspended', 'Suspended', 'Active'],
@@ -775,7 +796,7 @@ const getSellerDetails = async (sellerId) => {
         idStatus: 1,
         status: 1,
 
-        isAccountVerified: 1,
+        identityVerificationStatus: 1,
         isSuspended: 1,
         isActive: 1,
 
