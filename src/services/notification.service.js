@@ -83,7 +83,7 @@ const deleteNotification = async (notificationId) => {
 const sendPushNotificationByRole = async ({
   title,
   body,
-  userType, 
+  userType,
   notificationType,
 }) => {
   const userFilter = {
@@ -97,7 +97,7 @@ const sendPushNotificationByRole = async ({
     userFilter.role = userType;
   }
 
-  const users = await User.find(userFilter).select('fcmToken');
+  const users = await User.find(userFilter).select('_id fcmToken');
 
   if (!users.length) {
     return {
@@ -106,6 +106,17 @@ const sendPushNotificationByRole = async ({
       message: 'No users found for this notification',
     };
   }
+
+  const notificationsToInsert = users.map((user) => ({
+    recipient: user._id,
+    title,
+    message: body,
+    type: notificationType || 'GENERAL',
+    data: {},
+    expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+  }));
+
+  await Notification.insertMany(notificationsToInsert);
 
   const tokens = users.map((u) => u.fcmToken);
 
@@ -122,7 +133,6 @@ const sendPushNotificationByRole = async ({
 
   let successCount = 0;
   let failureCount = 0;
-
   const chunkSize = 500;
 
   for (let i = 0; i < tokens.length; i += chunkSize) {
@@ -152,7 +162,6 @@ const sendPushNotificationByRole = async ({
         }
       });
     } catch (error) {
-      // Do NOT break execution
       failureCount += tokenChunk.length;
       console.error('FCM batch error:', error.message);
     }
@@ -163,6 +172,7 @@ const sendPushNotificationByRole = async ({
     failed: failureCount,
   };
 };
+
 
 
 

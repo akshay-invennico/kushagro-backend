@@ -298,13 +298,13 @@ const firebaseSSOLogin = async ({ idToken }) => {
       email,
       profile: picture || null,
       password: uid,
-      isVerified: false,
+      isVerified: true,
       isAccountVerified: false,
       primaryKey: 'email',
     });
   }
 
-  const tokens = await tokenService.generateAuthTokens(user);
+  const tokens = await tokenService.generateTemporaryAuthTokens(user);
 
   return {
     user,
