@@ -3,6 +3,7 @@ const catchAsync = require('../utils/catchAsync');
 const { authService, userService, tokenService, emailService, smsService } = require('../services');
 const { generateOtp } = require('../utils/generateOtp');
 const ApiError = require('../utils/ApiError');
+const config = require('../config/config');
 
 const register = catchAsync(async (req, res) => {
   const { email, phone } = req.body;
@@ -80,7 +81,7 @@ const login = catchAsync(async (req, res) => {
     res.send({
       success: true,
       message: 'Login successful',
-      data: { user, tokens },
+      data: { user, tokens, connectyCube: config.connectyCube },
       meta: null,
       error: null,
     });
@@ -90,7 +91,7 @@ const login = catchAsync(async (req, res) => {
     res.send({
       success: true,
       message: 'Login successful',
-      data: { user, tokens },
+      data: { user, tokens, connectyCube: config.connectyCube },
       meta: null,
       error: null,
     });
@@ -162,7 +163,7 @@ const completeRegistration = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({
     success: true,
     message: 'Registration completed successfully',
-    data: { user, tokens },
+    data: { user, tokens, connectyCube: config.connectyCube },
     meta: null,
     error: null,
   });

@@ -23,6 +23,9 @@ const envVarsSchema = Joi.object()
     AWS_ACCESS_KEY_ID: Joi.string().required().description('aws s3 access key id'),
     AWS_BUCKET_REGION: Joi.string().required().description('aws s3 region'),
     AWS_BUCKET_NAME: Joi.string().required().description('aws s3 bucket name'),
+    APP_ID: Joi.number().required().description('ConnectyCube App ID'),
+    AUTH_KEY: Joi.string().required().description('ConnectyCube Auth Key'),
+    API_KEY: Joi.string().required().description('ConnectyCube API Key'),
   })
   .unknown();
 
@@ -85,5 +88,10 @@ module.exports = {
       region: envVars.AWS_BUCKET_REGION,
       bucket: envVars.AWS_BUCKET_NAME,
     },
+  },
+  connectyCube: {
+    appId: envVars.APP_ID,
+    authKey: envVars.AUTH_KEY,
+    apiKey: envVars.API_KEY,
   },
 };
