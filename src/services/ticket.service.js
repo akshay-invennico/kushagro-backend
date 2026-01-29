@@ -1,4 +1,5 @@
 const httpStatus = require('http-status');
+const mongoose = require('mongoose');
 const Ticket = require('../models/ticket.model');
 const ApiError = require('../utils/ApiError');
 
@@ -27,7 +28,7 @@ const getAllTickets = async (filter, query) => {
   }
 
   if (filter.user) {
-    matchStage.user = filter.user;
+    matchStage.user = new mongoose.Types.ObjectId(filter.user);
   }
 
   const pipeline = [

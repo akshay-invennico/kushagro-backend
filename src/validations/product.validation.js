@@ -33,6 +33,10 @@ const getProducts = {
     maxPrice: Joi.number(),
     status: Joi.string(),
     priceOrder: Joi.string().valid('highToLow', 'lowToHigh'),
+    location: Joi.object().keys({
+      lat: Joi.number(),
+      lng: Joi.number(),
+    }),
   }),
 };
 
