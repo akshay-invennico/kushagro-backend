@@ -767,9 +767,7 @@ const getSellerDetails = async (sellerId) => {
 
         totalFrauds: { $size: '$frauds' },
 
-        idStatus: {
-          $cond: ['$isAccountVerified', 'Verified', 'Pending'],
-        },
+        idStatus: '$identityVerificationStatus',
 
         status: {
           $cond: ['$isSuspended', 'Suspended', 'Active'],
@@ -798,7 +796,7 @@ const getSellerDetails = async (sellerId) => {
         idStatus: 1,
         status: 1,
 
-        isAccountVerified: 1,
+        identityVerificationStatus: 1,
         isSuspended: 1,
         isActive: 1,
 
