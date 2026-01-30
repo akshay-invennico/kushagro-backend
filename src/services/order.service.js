@@ -448,7 +448,38 @@ const getOrderById = async ({ orderId }) => {
       },
     },
     { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
-
+    {
+      $lookup: {
+        from: 'ratings',
+        let: { sellerId: '$seller._id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$sellerId', '$$sellerId'] },
+                  { $eq: ['$isDeleted', false] },
+                ],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: '$sellerId',
+              averageRating: { $avg: '$rating' },
+              totalReviews: { $sum: 1 },
+            },
+          },
+        ],
+        as: 'sellerRating',
+      },
+    },
+    {
+      $unwind: {
+        path: '$sellerRating',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
     {
       $lookup: {
         from: 'products',
@@ -510,11 +541,19 @@ const getOrderById = async ({ orderId }) => {
           profile: '$buyer.profile'
         },
 
-        seller: {
+        sellerId: {
           _id: '$seller._id',
+          profile: '$seller.profile',
           name: '$seller.name',
           email: '$seller.email',
-          profile: '$seller.profile',
+          bio: '$seller.bio',
+          identityVerificationStatus: '$seller.identityVerificationStatus',
+          averageRating: {
+            $ifNull: [{ $round: ['$sellerRating.averageRating', 1] }, 0],
+          },
+          totalReviews: {
+            $ifNull: ['$sellerRating.totalReviews', 0],
+          },
         },
 
         product: {

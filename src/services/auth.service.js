@@ -271,7 +271,7 @@ const verifyForgotOtp = async (body) => {
  * Firebase SSO Login (Google / Apple)
  */
 const firebaseSSOLogin = async ({ idToken }) => {
-  // 1. Verify Firebase token
+  // 1️⃣ Verify Firebase token
   const decodedToken = await admin.auth().verifyIdToken(idToken);
 
   const {
@@ -284,34 +284,71 @@ const firebaseSSOLogin = async ({ idToken }) => {
 
   const provider = firebaseInfo?.sign_in_provider;
 
-
   if (!email) {
-    throw new Error('Email not found in Firebase token');
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'Email not found in Firebase token'
+    );
   }
 
+
   let user = await User.findOne({ email });
+  let token;
+  let isNewUser = false;
 
+  if (user) {
+    if (!user.isActive) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'Your account is not active'
+      );
+    }
 
-  if (!user) {
+    user = await User.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          isVerified: true,
+          primaryKey: 'email',
+          ...(picture && !user.profile && { profile: picture }),
+          ...(name && !user.name && { name }),
+        },
+      },
+      { new: true }
+    );
+
+    token = await tokenService.generateAuthTokens(user);
+  } 
+  // 4️⃣ New User → REGISTER
+  else {
+    isNewUser = true;
+
     user = await User.create({
       name: name || 'User',
       email,
       profile: picture || null,
-      password: uid,
+      password: uid, // internal mapping only
       isVerified: true,
       isAccountVerified: false,
       primaryKey: 'email',
+      isActive: true,
     });
+
+    // 🕒 Temporary token
+    token = await tokenService.generateTemporaryAuthTokens(user);
   }
 
-  const tokens = await tokenService.generateTemporaryAuthTokens(user);
+  console.log("the token is",token);
 
   return {
     user,
-    tokens,
+    token,
     provider,
+    isNewUser,
   };
 };
+
+
 
 
 
