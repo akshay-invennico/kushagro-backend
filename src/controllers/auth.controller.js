@@ -190,7 +190,7 @@ const firebaseSSOLogin = catchAsync(async (req, res) => {
     message: 'Login successful',
     data: {
       user: result.user,
-      tokens: result.tokens,
+      tokens: result.token,
       provider: result.provider,
     },
     meta: null,
