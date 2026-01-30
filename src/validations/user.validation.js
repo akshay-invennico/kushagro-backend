@@ -43,7 +43,7 @@ const updateUser = {
       dialingCode: Joi.string().trim(),
       profile: Joi.string().trim().allow(null),
       address: Joi.string().trim().allow(null),
-      bio: Joi.string().max(500),
+      bio: Joi.string().trim().allow(null),
       password: Joi.string().custom(password),
 
       // update not allowed

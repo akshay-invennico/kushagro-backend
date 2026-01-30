@@ -19,13 +19,15 @@ const createRating = async (buyerId, body) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'You have already rated this seller for this order');
   }
 
-  return Rating.create({
+  const rating = await Rating.create({
     buyerId,
     sellerId: body.sellerId,
     orderId: body.orderId,
     rating: body.rating,
     review: body.review,
   });
+
+  return rating;
 };
 
 const queryRatings = async (filter, options) => {
