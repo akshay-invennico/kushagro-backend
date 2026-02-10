@@ -21,6 +21,10 @@ const categorySchema = new mongoose.Schema(
       enum: ['ACTIVE', 'INACTIVE'],
       default: 'ACTIVE',
     },
+    tax: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

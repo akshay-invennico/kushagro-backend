@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const httpStatus = require('http-status');
-const { Product, User, Rating } = require('../models');
+const { Product, User, Rating, Category } = require('../models');
 const ApiError = require('../utils/ApiError');
 const notificationService = require('./notification.service');
 const Commission = require('../models/commission.model');
@@ -17,7 +17,16 @@ const createProduct = async (productBody) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Product with this name already exists');
   }
 
-  const newProduct = await Product.create(productBody);
+  // Fetch category to get tax
+  const category = await Category.findById(productBody.categoryId);
+  if (!category) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Category not found');
+  }
+
+  const newProduct = await Product.create({
+    ...productBody,
+    tax: category.tax || 0,
+  });
 
   // notification for admin
   const admins = await User.find({ role: 'ADMIN' });
@@ -238,7 +247,9 @@ const getProductById = async (id) => {
   };
 
   const basePrice = Number(product.price || 0);
-  const taxAmount = commission.taxPercentage > 0 ? (basePrice * commission.taxPercentage) / 100 : 0;
+  // Use product tax if available, otherwise fallback to commission tax (or 0)
+  const productTaxPercentage = product.tax !== undefined ? product.tax : commission.taxPercentage || 0;
+  const taxAmount = productTaxPercentage > 0 ? (basePrice * productTaxPercentage) / 100 : 0;
   const platformChargeAmount = commission.isPlatformChargesApplied ? Number(commission.platformCharges || 0) : 0;
 
   const commissionAmount =
@@ -254,7 +265,7 @@ const getProductById = async (id) => {
     pricing: {
       basePrice,
       tax: {
-        percentage: commission.taxPercentage,
+        percentage: productTaxPercentage,
         amount: Number(taxAmount.toFixed(2)),
       },
       platformCharges: {

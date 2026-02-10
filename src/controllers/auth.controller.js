@@ -1,9 +1,10 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
-const { authService, userService, tokenService, emailService, smsService } = require('../services');
+const { authService, userService, tokenService, smsService } = require('../services');
 const { generateOtp } = require('../utils/generateOtp');
 const ApiError = require('../utils/ApiError');
 const config = require('../config/config');
+const { sendVerificationEmail } = require('../services/email.service');
 
 const register = catchAsync(async (req, res) => {
   const { email, phone } = req.body;
@@ -24,7 +25,7 @@ const register = catchAsync(async (req, res) => {
       const phoneNumber = user.dialingCode + user.phone;
       await smsService.sendOtpSms(phoneNumber, otp);
     } else {
-      await emailService.sendVerificationEmail(user.email, otp);
+      await sendVerificationEmail(user.email, otp);
     }
 
     return res.status(httpStatus.OK).send({
@@ -47,7 +48,7 @@ const register = catchAsync(async (req, res) => {
     const phoneNumber = user.dialingCode + user.phone;
     await smsService.sendOtpSms(phoneNumber, otp);
   } else {
-    await emailService.sendVerificationEmail(user.email, otp);
+    await sendVerificationEmail(user.email, otp);
   }
 
   res.status(httpStatus.CREATED).send({

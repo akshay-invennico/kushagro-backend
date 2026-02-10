@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 const { User, Order, Product, Payment } = require('../models');
+const { sendSellerVerificationEmail } = require('./email.service');
 
 /**
  * Calculate stats and growth
@@ -267,10 +268,17 @@ const verifySeller = async (sellerId, status, reasons = []) => {
     seller.identityVerificationStatus = 'APPROVED';
     seller.rejectionReasons = [];
     seller.isVerified = true;
+    if (seller.email) {
+      await sendSellerVerificationEmail(seller.email, seller.name, 'approved');
+    }
   } else if (status === 'REJECTED') {
     seller.identityVerificationStatus = 'REJECTED';
     seller.rejectionReasons = reasons;
     seller.isVerified = false;
+    if (seller.email) {
+      const reasonText = reasons.join(', ');
+      await sendSellerVerificationEmail(seller.email, seller.name, 'rejected', reasonText);
+    }
   } else {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid status');
   }

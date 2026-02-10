@@ -6,16 +6,13 @@ const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Payment = require('../models/payment.model');
 const ApiError = require('../utils/ApiError');
-const config = require('../config/config');
-const payment = require('../config/payment');
 const mongoose = require('mongoose');
 const Commission = require('../models/commission.model');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
-const { sendVerificationEmail } = require('./email.service');
+const { sendVerificationEmail, sendOrderPlacedEmail } = require('./email.service');
 const { sendOtpSms } = require('./sms.service');
 const notificationService = require('./notification.service');
-const { not } = require('joi');
 
 const generateOrderNumber = async () => {
   const lastOrder = await Order.findOne({})
@@ -38,7 +35,7 @@ function generateOTP() {
 }
 
 const createOrder = async (payload) => {
-  const { buyerId, productId,buyerAddress } = payload;
+  const { buyerId, productId, buyerAddress } = payload;
   const currency = 'UGX';
   const productDetails = await Product.findById(productId);
   if (!productDetails) throw new Error('Product not found');
@@ -54,13 +51,13 @@ const createOrder = async (payload) => {
 
   const commission = await Commission.findOne();
 
-  const orderNumber =  await generateOrderNumber();
+  const orderNumber = await generateOrderNumber();
   const subTotal = quantity * price;
 
-  const taxRate = commission?.commissionPercentage || 0;
+  const taxRate = productDetails.tax !== undefined ? productDetails.tax : (commission?.commissionPercentage || 0);
   const platformChargePer = commission?.platformCharges || 0;
 
-  const taxAmount = commission?.isCommissionEnabled
+  const taxAmount = (taxRate > 0)
     ? (subTotal * taxRate) / 100
     : 0;
 
@@ -138,6 +135,15 @@ const createOrder = async (payload) => {
     type: 'ORDER_PLACED',
     data: { orderId: order.id, role: 'BUYER' },
   });
+
+  if (checkBuyer.email) {
+    const items = [{
+      name: productDetails.name,
+      quantity: quantity,
+      price: productDetails.price
+    }];
+    await sendOrderPlacedEmail(checkBuyer.email, checkBuyer.name, orderNumber, items, payableAmount);
+  }
 
   return {
     order,
@@ -331,6 +337,7 @@ const getAllOrders = async (userId, query) => {
         image: { $arrayElemAt: ['$product.images', 0] },
         category: '$category.name',
         extraFields: '$product.extraFields',
+        price: '$product.price'
       },
 
       buyer:
@@ -515,14 +522,14 @@ const getOrderById = async ({ orderId }) => {
         paybleAmount: 1,
         createdAt: 1,
         deliveryDate: 1,
-        buyerAddress:1,
+        buyerAddress: 1,
         cancellationReason: { $ifNull: ['$cancellationReason', null] },
         note: { $ifNull: ['$note', null] },
         OTP: { $ifNull: ['$OTP', null] },
         otpExpiresAt: { $ifNull: ['$otpExpiresAt', null] },
         otpSent: { $ifNull: ['$otpSent', false] },
         otpVerified: { $ifNull: ['$otpVerified', false] },
-        
+
         payment: {
           reference: 1,
           status: 1,

@@ -14,6 +14,7 @@ const createCategory = {
   body: Joi.object({
     name: Joi.string().required(),
     status: Joi.string().valid('ACTIVE', 'INACTIVE').required(),
+    tax: Joi.number().required(),
     fields: Joi.array().items(fieldSchema),
   }),
 };
@@ -22,6 +23,7 @@ const updateCategory = {
   body: Joi.object({
     name: Joi.string(),
     status: Joi.string().valid('ACTIVE', 'INACTIVE'),
+    tax: Joi.number(),
     fields: Joi.array().items(fieldSchema),
   }),
 };

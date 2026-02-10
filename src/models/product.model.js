@@ -65,6 +65,10 @@ const productSchema = new mongoose.Schema(
       default: 'ACTIVE',
       index: true,
     },
+    tax: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

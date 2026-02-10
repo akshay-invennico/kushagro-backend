@@ -40,7 +40,7 @@ const notificationSchema = mongoose.Schema(
       type: Date,
       default: () => new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
       index: { expires: '0s' },
-    }
+    },
   },
   {
     timestamps: true,

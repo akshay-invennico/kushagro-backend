@@ -5,7 +5,7 @@ const Category = require('../models/category.model');
 const CategoryField = require('../models/categoryField.model');
 
 const createCategory = async (body) => {
-  const { name, status, fields = [] } = body;
+  const { name, status, tax, fields = [] } = body;
 
   const slug = slugify(name, { lower: true });
 
@@ -18,6 +18,7 @@ const createCategory = async (body) => {
     name,
     slug,
     status,
+    tax: tax || 0,
   });
 
   if (fields.length) {
@@ -33,7 +34,7 @@ const createCategory = async (body) => {
 };
 
 const updateCategory = async (categoryId, body) => {
-  const { name, status, fields = [] } = body;
+  const { name, status, tax, fields = [] } = body;
 
   const category = await Category.findById(categoryId);
   if (!category) {
@@ -47,6 +48,10 @@ const updateCategory = async (categoryId, body) => {
 
   if (status) {
     category.status = status;
+  }
+
+  if (tax !== undefined) {
+    category.tax = tax;
   }
 
   await category.save();
