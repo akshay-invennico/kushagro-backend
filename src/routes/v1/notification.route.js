@@ -5,6 +5,7 @@ const notificationController = require('../../controllers/notification.controlle
 const router = express.Router();
 
 router.route('/').get(auth(), notificationController.getNotifications);
+router.route('/count').get(auth(), notificationController.getNotificationCount);
 router.route('/read/all').patch(auth(), notificationController.markAllRead);
 router.route('/:notificationId').delete(auth(), notificationController.deleteNotification);
 router.route('/read/:notificationId').patch(auth(), notificationController.markRead);
@@ -77,6 +78,38 @@ module.exports = router;
  *                 totalResults:
  *                   type: integer
  *                   example: 1
+ *       "401":
+ *         description: Unauthorized
+ *       "403":
+ *         description: Forbidden
+ */
+
+/**
+ * @swagger
+ * /notification/count:
+ *   get:
+ *     summary: Get notification count
+ *     description: Retrieve count of notifications for the current user (optionally filtered by isRead).
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: isRead
+ *         schema:
+ *           type: boolean
+ *         description: Filter by read status
+ *     responses:
+ *       "200":
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
+ *                   example: 5
  *       "401":
  *         description: Unauthorized
  *       "403":

@@ -10,6 +10,9 @@ const getNotifications = catchAsync(async (req, res) => {
   filter.status = 'ACTIVE';
 
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  if (!options.sortBy) {
+    options.sortBy = 'createdAt:desc';
+  }
 
   const result = await notificationService.queryNotifications(filter, options);
 
@@ -23,6 +26,22 @@ const getNotifications = catchAsync(async (req, res) => {
       totalPages: result.totalPages,
       totalResults: result.totalResults,
     },
+    error: null,
+  });
+});
+
+const getNotificationCount = catchAsync(async (req, res) => {
+  const filter = pick(req.query, ['isRead']);
+  filter.recipient = req.user.id;
+  filter.status = 'ACTIVE';
+
+  const count = await notificationService.getNotificationCount(filter);
+
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Notification count fetched successfully',
+    data: { count },
+    meta: null,
     error: null,
   });
 });
@@ -107,4 +126,5 @@ module.exports = {
   markAllRead,
   deleteNotification,
   sendNotification,
+  getNotificationCount,
 };

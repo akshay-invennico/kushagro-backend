@@ -40,6 +40,15 @@ const getNotificationById = async (id) => {
 };
 
 /**
+ * get notification count
+ * @param {Object} filter
+ * @returns {Promise<number>}
+ */
+const getNotificationCount = async (filter) => {
+  return Notification.countDocuments(filter);
+};
+
+/**
  * mark notification as read
  * @param {ObjectId} notificationId
  * @returns {Promise<Notification>}
@@ -205,4 +214,5 @@ module.exports = {
   deleteNotification,
   sendPushNotificationByRole,
   sendRealTimeOnly,
+  getNotificationCount,
 };

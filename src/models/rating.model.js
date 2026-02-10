@@ -44,6 +44,7 @@ const ratingSchema = mongoose.Schema(
   { timestamps: true }
 );
 
+ratingSchema.index({ buyerId: 1, sellerId: 1, orderId: 1 }, { unique: true });
 ratingSchema.plugin(toJSON);
 ratingSchema.plugin(paginate);
 
