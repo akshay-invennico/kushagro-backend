@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const Commission = require('../models/commission.model');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
-const { sendVerificationEmail, sendOrderPlacedEmail } = require('./email.service');
+const { sendVerificationEmail, sendOrderPlacedEmail, sendOrderDeliveredEmail } = require('./email.service');
 const { sendOtpSms } = require('./sms.service');
 const notificationService = require('./notification.service');
 
@@ -724,6 +724,33 @@ const verifyOtpUpdateOrder = async (payload) => {
     type: 'ORDER_COMPLETED',
     data: { orderId: order.id, role: 'SELLER' },
   });
+
+  const productDetails = await Product.findById(order.productId);
+  if (productDetails) {
+    const items = [{
+      name: productDetails.name,
+      quantity: order.quantity,
+      price: productDetails.price
+    }];
+
+    let buyerName = 'Valued Customer';
+    let buyerEmail = '';
+
+    if (order.buyerId && order.buyerId.email) {
+      buyerEmail = order.buyerId.email;
+      buyerName = order.buyerId.name || buyerName;
+    } else {
+      const buyer = await User.findById(order.buyerId);
+      if (buyer) {
+        buyerEmail = buyer.email;
+        buyerName = buyer.name || buyerName;
+      }
+    }
+
+    if (buyerEmail) {
+      await sendOrderDeliveredEmail(buyerEmail, buyerName, order.orderNumber, items, order.paybleAmount);
+    }
+  }
 
   return {
     success: true,

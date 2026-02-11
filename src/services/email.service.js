@@ -5,6 +5,7 @@ const getVerificationEmailTemplate = require('../templates/email/verification.te
 const getResetPasswordEmailTemplate = require('../templates/email/reset-password.template');
 const getForgotPasswordEmailTemplate = require('../templates/email/forgot-password.template');
 const getOrderPlacedEmailTemplate = require('../templates/email/order-placed.template');
+const getOrderDeliveredEmailTemplate = require('../templates/email/order-delivered.template');
 const getSellerVerificationEmailTemplate = require('../templates/email/seller-verification.template');
 
 // Initialize SendGrid with API key
@@ -107,6 +108,21 @@ const sendSellerVerificationEmail = async (to, sellerName, status, reason) => {
   await sendEmail(to, subject, text, html);
 };
 
+/**
+ * @param {string} to
+ * @param {string} customerName
+ * @param {string} orderId
+ * @param {Array} items
+ * @param {number} totalAmount
+ * @returns {Promise}
+ */
+const sendOrderDeliveredEmail = async (to, customerName, orderId, items, totalAmount) => {
+  const subject = 'Order Delivered Successfully';
+  const text = `Your order #${orderId} has been delivered successfully. Total: ${totalAmount}`;
+  const html = getOrderDeliveredEmailTemplate(orderId, customerName, items, totalAmount);
+  await sendEmail(to, subject, text, html);
+};
+
 module.exports = {
   sendEmail,
   sendResetPasswordEmail,
@@ -114,4 +130,5 @@ module.exports = {
   sendForgotPasswordEmail,
   sendOrderPlacedEmail,
   sendSellerVerificationEmail,
+  sendOrderDeliveredEmail,
 };
