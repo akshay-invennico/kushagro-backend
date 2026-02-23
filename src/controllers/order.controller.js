@@ -1,0 +1,170 @@
+const httpStatus = require('http-status');
+const catchAsync = require('../utils/catchAsync');
+const orderService = require('../services/order.service');
+
+const createOrder = catchAsync(async (req, res) => {
+  const data = await orderService.createOrder(req.body);
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'order created successfully',
+    data,
+  });
+});
+
+const getOrders = async (req, res) => {
+  const userId = req.user._id;
+
+  const result = await orderService.getAllOrders(userId, req.query);
+
+  const orders = result.data;
+  const { meta } = result;
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Orders fetched successfully',
+    data: orders,
+    meta: {
+      count: orders.length,
+      page: meta.page,
+      limit: meta.limit,
+      totalPages: meta.totalPages,
+      totalResults: meta.totalResults,
+    },
+    error: null,
+  });
+};
+
+const getOrderById = async (req, res) => {
+  const order = await orderService.getOrderById({
+    orderId: req.params.orderId,
+  });
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Order fetched successfully',
+    data: order,
+    error: null,
+  });
+};
+
+const updateOrder = async (req, res) => {
+  try {
+    const result = await orderService.updateOrder(req.body);
+
+    res.status(httpStatus.OK).json({
+      success: true,
+      message: 'Order status updated successfully',
+      data: result,
+    });
+  } catch (error) {
+    res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const sendOrderOtp = async (req, res) => {
+  try {
+    const result = await orderService.sendOtpToBuyer(req.body);
+
+    res.status(httpStatus.OK).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const verifyOrderOtp = async (req, res) => {
+  try {
+    const result = await orderService.verifyOtpUpdateOrder(req.body);
+
+    res.status(httpStatus.OK).json({
+      success: result.success,
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const cancelOrder = catchAsync(async (req, res) => {
+  const data = await orderService.cancelOrder(req.body);
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'order cancelled successfully',
+    data,
+  });
+});
+
+const flagOrders = catchAsync(async (req, res) => {
+  const { orderIds, reason, note } = req.body;
+
+  const result = await orderService.flagOrders({
+    orderIds,
+    reason,
+    note,
+  });
+
+  res.status(httpStatus.OK).send({
+    message: 'Order(s) flagged successfully',
+    ...result,
+  });
+});
+
+const resolveOrderFlags = catchAsync(async (req, res) => {
+  const { orderIds } = req.body;
+
+  const result = await orderService.resolveFlags({ orderIds });
+
+  res.status(httpStatus.OK).send({
+    message: 'Order flag(s) resolved successfully',
+    ...result,
+  });
+});
+
+const getBuyerOrders = async (req, res) => {
+  const { buyerId } = req.params;
+
+  const result = await orderService.getBuyerOrders(buyerId, req.query);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Buyer orders fetched successfully',
+    data: result.data,
+    meta: result.meta,
+  });
+};
+
+const getSellerOrders = async (req, res) => {
+  const { sellerId } = req.params;
+
+  const result = await orderService.getSellerOrders(sellerId, req.query);
+
+  res.status(httpStatus.OK).json({
+    success: true,
+    ...result,
+  });
+};
+
+module.exports = {
+  createOrder,
+  getOrders,
+  getOrderById,
+  updateOrder,
+  sendOrderOtp,
+  verifyOrderOtp,
+  cancelOrder,
+  flagOrders,
+  resolveOrderFlags,
+  getBuyerOrders,
+  getSellerOrders,
+};

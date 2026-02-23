@@ -6,16 +6,38 @@ const userController = require('../../controllers/user.controller');
 
 const router = express.Router();
 
+router.route('/').get(auth('getUser'), validate(userValidation.getUser), userController.getUser);
+router.route('/all').get(auth('getUsers'), validate(userValidation.getUsers), userController.getUsers);
+router.route('/:userId').patch(auth('manageUsers'), userController.updateUser);
 router
-  .route('/')
-  .post(auth('manageUsers'), validate(userValidation.createUser), userController.createUser)
-  .get(auth('getUsers'), validate(userValidation.getUsers), userController.getUsers);
+  .route('/change/password')
+  .post(auth('manageUsers'), validate(userValidation.changePassword), userController.changePassword);
+router
+  .route('/delete/account')
+  .patch(auth('manageUsers'), validate(userValidation.deleteAccount), userController.deleteAccount);
+router.get('/transactions', auth(), userController.getMyTransactions);
+
+router.route('/:userId/suspend').post(auth('manageUsers'), validate(userValidation.suspendUser), userController.suspendUser);
 
 router
-  .route('/:userId')
-  .get(auth('getUsers'), validate(userValidation.getUser), userController.getUser)
-  .patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser)
-  .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
+  .route('/:userId/reactivate')
+  .post(auth('manageUsers'), validate(userValidation.reactivateUser), userController.reactivateUser);
+
+router
+  .route('/:userId/reset/link')
+  .get(auth('manageUsers'), validate(userValidation.getResetPasswordLink), userController.getResetPasswordLink);
+
+router.get('/seller', userController.getSellers);
+router.get('/sellerdata/:sellerId', userController.getSellerDetails);
+router.patch('/savefcm/:userId', validate(userValidation.saveFcmToken), userController.saveFcmToken);
+router.patch('/address/:userId', userController.addBuyerAddress);
+router.get('/address/:userId', userController.getBuyerAddresses);
+router.patch('/sendotp/buyer/:userId', userController.sendOtpToBuyerBeforeOrder);
+router.post('/verifyotp/buyer', userController.verifyOtpBeforeOrder);
+
+router.post('/:userId/block', auth('manageUsers'), userController.blockBuyer);
+router.post('/:userId/unblock', auth('manageUsers'), userController.unblockBuyer);
+router.get('/blocked', auth('manageUsers'), userController.getBlockedUsers);
 
 module.exports = router;
 
@@ -23,232 +45,244 @@ module.exports = router;
  * @swagger
  * tags:
  *   name: Users
- *   description: User management and retrieval
+ *   description: User profile and user management
  */
 
 /**
  * @swagger
- * path:
- *  /users:
- *    post:
- *      summary: Create a user
- *      description: Only admins can create other users.
- *      tags: [Users]
- *      security:
- *        - bearerAuth: []
- *      requestBody:
- *        required: true
- *        content:
- *          application/json:
- *            schema:
- *              type: object
- *              required:
- *                - name
- *                - email
- *                - password
- *                - role
- *              properties:
- *                name:
+ * /users:
+ *   get:
+ *     summary: Get users or logged-in user
+ *     description: |
+ *       - Admin users can retrieve a paginated list of all users.
+ *       - Non-admin users retrieve their own user profile.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filter by user name
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *         description: Filter by user role
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *         example: name:asc
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *     responses:
+ *       "200":
+ *         description: Successful response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/User'
+ *                 - type: object
+ *                   properties:
+ *                     results:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/User'
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalResults:
+ *                       type: integer
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users:
+ *   patch:
+ *     summary: Update logged-in user profile
+ *     description: Logged-in users can update their own profile information.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *     responses:
+ *       "200":
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users/change/password:
+ *   post:
+ *     summary: Change password
+ *     description: Logged-in users can change their password.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *               - confirmPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *               confirmPassword:
+ *                 type: string
+ *     responses:
+ *       "204":
+ *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users/delete/account:
+ *   patch:
+ *     summary: Delete account
+ *     description: Logged-in users can delete their account.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - password
+ *             properties:
+ *               password:
+ *                 type: string
+ *               reason:
  *                  type: string
- *                email:
- *                  type: string
- *                  format: email
- *                  description: must be unique
- *                password:
- *                  type: string
- *                  format: password
- *                  minLength: 8
- *                  description: At least one number and one letter
- *                role:
+ *               options:
+ *                  type: array
+ *                  items:
+ *                    type: string
+ *     responses:
+ *       "204":
+ *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /users/report/{userId}:
+ *   post:
+ *     summary: Report a user
+ *     description: Allows an authorized user to report another user for inappropriate behavior.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user being reported
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: Inappropriate Behaviour
+ *               image:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://example-bucket.s3.amazonaws.com/images/report.png
+ *     responses:
+ *       "200":
+ *         description: User reported successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
  *                   type: string
- *                   enum: [user, admin]
- *              example:
- *                name: fake name
- *                email: fake@example.com
- *                password: password1
- *                role: user
- *      responses:
- *        "201":
- *          description: Created
- *          content:
- *            application/json:
- *              schema:
- *                 $ref: '#/components/schemas/User'
- *        "400":
- *          $ref: '#/components/responses/DuplicateEmail'
- *        "401":
- *          $ref: '#/components/responses/Unauthorized'
- *        "403":
- *          $ref: '#/components/responses/Forbidden'
- *
- *    get:
- *      summary: Get all users
- *      description: Only admins can retrieve all users.
- *      tags: [Users]
- *      security:
- *        - bearerAuth: []
- *      parameters:
- *        - in: query
- *          name: name
- *          schema:
- *            type: string
- *          description: User name
- *        - in: query
- *          name: role
- *          schema:
- *            type: string
- *          description: User role
- *        - in: query
- *          name: sortBy
- *          schema:
- *            type: string
- *          description: sort by query in the form of field:desc/asc (ex. name:asc)
- *        - in: query
- *          name: limit
- *          schema:
- *            type: integer
- *            minimum: 1
- *          default: 10
- *          description: Maximum number of users
- *        - in: query
- *          name: page
- *          schema:
- *            type: integer
- *            minimum: 1
- *            default: 1
- *          description: Page number
- *      responses:
- *        "200":
- *          description: OK
- *          content:
- *            application/json:
- *              schema:
- *                type: object
- *                properties:
- *                  results:
- *                    type: array
- *                    items:
- *                      $ref: '#/components/schemas/User'
- *                  page:
- *                    type: integer
- *                    example: 1
- *                  limit:
- *                    type: integer
- *                    example: 10
- *                  totalPages:
- *                    type: integer
- *                    example: 1
- *                  totalResults:
- *                    type: integer
- *                    example: 1
- *        "401":
- *          $ref: '#/components/responses/Unauthorized'
- *        "403":
- *          $ref: '#/components/responses/Forbidden'
- */
-
-/**
- * @swagger
- * path:
- *  /users/{id}:
- *    get:
- *      summary: Get a user
- *      description: Logged in users can fetch only their own user information. Only admins can fetch other users.
- *      tags: [Users]
- *      security:
- *        - bearerAuth: []
- *      parameters:
- *        - in: path
- *          name: id
- *          required: true
- *          schema:
- *            type: string
- *          description: User id
- *      responses:
- *        "200":
- *          description: OK
- *          content:
- *            application/json:
- *              schema:
- *                 $ref: '#/components/schemas/User'
- *        "401":
- *          $ref: '#/components/responses/Unauthorized'
- *        "403":
- *          $ref: '#/components/responses/Forbidden'
- *        "404":
- *          $ref: '#/components/responses/NotFound'
- *
- *    patch:
- *      summary: Update a user
- *      description: Logged in users can only update their own information. Only admins can update other users.
- *      tags: [Users]
- *      security:
- *        - bearerAuth: []
- *      parameters:
- *        - in: path
- *          name: id
- *          required: true
- *          schema:
- *            type: string
- *          description: User id
- *      requestBody:
- *        required: true
- *        content:
- *          application/json:
- *            schema:
- *              type: object
- *              properties:
- *                name:
- *                  type: string
- *                email:
- *                  type: string
- *                  format: email
- *                  description: must be unique
- *                password:
- *                  type: string
- *                  format: password
- *                  minLength: 8
- *                  description: At least one number and one letter
- *              example:
- *                name: fake name
- *                email: fake@example.com
- *                password: password1
- *      responses:
- *        "200":
- *          description: OK
- *          content:
- *            application/json:
- *              schema:
- *                 $ref: '#/components/schemas/User'
- *        "400":
- *          $ref: '#/components/responses/DuplicateEmail'
- *        "401":
- *          $ref: '#/components/responses/Unauthorized'
- *        "403":
- *          $ref: '#/components/responses/Forbidden'
- *        "404":
- *          $ref: '#/components/responses/NotFound'
- *
- *    delete:
- *      summary: Delete a user
- *      description: Logged in users can delete only themselves. Only admins can delete other users.
- *      tags: [Users]
- *      security:
- *        - bearerAuth: []
- *      parameters:
- *        - in: path
- *          name: id
- *          required: true
- *          schema:
- *            type: string
- *          description: User id
- *      responses:
- *        "200":
- *          description: No content
- *        "401":
- *          $ref: '#/components/responses/Unauthorized'
- *        "403":
- *          $ref: '#/components/responses/Forbidden'
- *        "404":
- *          $ref: '#/components/responses/NotFound'
+ *                   example: User reported successfully
+ *                 data:
+ *                   type: object
+ *                   nullable: true
+ *                   example: null
+ *                 meta:
+ *                   type: object
+ *                   example: {}
+ *                 error:
+ *                   type: object
+ *                   nullable: true
+ *                   example: null
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         description: User not found
+ *       "400":
+ *         description: Invalid request payload
  */

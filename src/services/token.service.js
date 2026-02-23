@@ -1,10 +1,7 @@
 const jwt = require('jsonwebtoken');
 const moment = require('moment');
-const httpStatus = require('http-status');
 const config = require('../config/config');
-const userService = require('./user.service');
 const { Token } = require('../models');
-const ApiError = require('../utils/ApiError');
 const { tokenTypes } = require('../config/tokens');
 
 /**
@@ -85,18 +82,41 @@ const generateAuthTokens = async (user) => {
 };
 
 /**
+ * Generate temporary auth tokens (for users who verified OTP but haven't completed registration)
+ * @param {User} user
+ * @returns {Promise<Object>}
+ */
+const generateTemporaryAuthTokens = async (user) => {
+  // Temporary access token with shorter expiration (1 day)
+  const accessTokenExpires = moment().add(1, 'days');
+  const accessToken = generateToken(user.id, accessTokenExpires, tokenTypes.TEMPORARY_ACCESS);
+
+  // Temporary refresh token with (1 day) expiration
+  const refreshTokenExpires = moment().add(1, 'days');
+  const refreshToken = generateToken(user.id, refreshTokenExpires, tokenTypes.REFRESH);
+  await saveToken(refreshToken, user.id, refreshTokenExpires, tokenTypes.REFRESH);
+
+  return {
+    access: {
+      token: accessToken,
+      expires: accessTokenExpires.toDate(),
+    },
+    refresh: {
+      token: refreshToken,
+      expires: refreshTokenExpires.toDate(),
+    },
+  };
+};
+
+/**
  * Generate reset password token
- * @param {string} email
+ * @param {ObjectId} userId
  * @returns {Promise<string>}
  */
-const generateResetPasswordToken = async (email) => {
-  const user = await userService.getUserByEmail(email);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'No users found with this email');
-  }
+const generateResetPasswordToken = async (userId) => {
   const expires = moment().add(config.jwt.resetPasswordExpirationMinutes, 'minutes');
-  const resetPasswordToken = generateToken(user.id, expires, tokenTypes.RESET_PASSWORD);
-  await saveToken(resetPasswordToken, user.id, expires, tokenTypes.RESET_PASSWORD);
+  const resetPasswordToken = generateToken(userId, expires, tokenTypes.RESET_PASSWORD);
+  await saveToken(resetPasswordToken, userId, expires, tokenTypes.RESET_PASSWORD);
   return resetPasswordToken;
 };
 
@@ -105,5 +125,6 @@ module.exports = {
   saveToken,
   verifyToken,
   generateAuthTokens,
+  generateTemporaryAuthTokens,
   generateResetPasswordToken,
 };

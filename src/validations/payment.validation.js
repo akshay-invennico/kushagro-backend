@@ -1,0 +1,94 @@
+const Joi = require('joi');
+const { objectId } = require('./custom.validation');
+
+/**
+ * INITIALIZE PAYMENT
+ */
+const initializePayment = {
+  body: Joi.object({
+    email: Joi.string().email().required(),
+    orderId: Joi.string().custom(objectId).required(),
+    buyerId: Joi.string().custom(objectId).required(),
+    sellerId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+/**
+ * CREATE SELLER BANK ACCOUNT
+ */
+const createSellerBankAccount = {
+  body: Joi.object({
+    sellerId: Joi.string().custom(objectId).required(),
+
+    country: Joi.string().valid('NG', 'ZA').required(),
+    bankCode: Joi.string().trim().required(),
+    bankName: Joi.string().trim().required(),
+
+    accountNumber: Joi.string()
+      .pattern(/^\d{6,20}$/)
+      .required(),
+
+    firstName: Joi.string().trim().when('country', {
+      is: 'NG',
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+    lastName: Joi.string().trim().when('country', {
+      is: 'NG',
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+
+    // Non-NG
+    fullName: Joi.string()
+      .trim()
+      .when('country', {
+        is: Joi.not('NG'),
+        then: Joi.required(),
+        otherwise: Joi.optional(),
+      }),
+
+    phone: Joi.string().trim().required(),
+    email: Joi.string().email().required(),
+    currency: Joi.string().trim().required(),
+  }),
+};
+
+/**
+ * PAY SELLER
+ */
+const paySeller = {
+  body: Joi.object({
+    sellerId: Joi.string().custom(objectId).required(),
+    orderId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+/**
+ * REFUND BUYER
+ */
+const refundBuyer = {
+  body: Joi.object({
+    orderId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+/**
+ * BANK DETAILS
+ */
+const getBankDetails = {
+  query: Joi.object({
+    country: Joi.string().trim().required().length(2).uppercase().messages({
+      'any.required': 'Country code is required',
+      'string.length': 'Country code must be a 2-letter ISO code (e.g. NG, UG)',
+    }),
+  }),
+};
+
+module.exports = {
+  initializePayment,
+  createSellerBankAccount,
+  paySeller,
+  refundBuyer,
+  getBankDetails,
+};
